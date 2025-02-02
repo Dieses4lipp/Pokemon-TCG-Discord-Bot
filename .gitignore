@@ -1,0 +1,8 @@
+# .gitignore für .NET-Projekte
+
+# .NET
+bin/
+obj/
+
+# .env Datei
+.env
