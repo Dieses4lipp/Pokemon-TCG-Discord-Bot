@@ -55,24 +55,38 @@ namespace DiscordBot
                     {"Ultra Rare", 0.03 },
                     {"Secret Rare", 0.01 }
                 };
-                var selectedCards = new List<Card>();
-                for (int i = 0; i < 9; i++)
+                var selectedCards = new HashSet<Card>();
+                while (selectedCards.Count < 9)
                 {
                     string selectedRarity = RollRarity(random, rarityChances);
                     var possibleCards = allCards.Where(c => c.Rarity == selectedRarity).ToList();
                     if(possibleCards.Count > 0)
                     {
-                        selectedCards.Add(possibleCards[random.Next(possibleCards.Count)]);
+                        var cardToAdd = possibleCards[random.Next(possibleCards.Count)];
+                        if (!selectedCards.Contains(cardToAdd))
+                        {
+                            selectedCards.Add(cardToAdd);
+                        }
                     }
                     else
                     {
-                        selectedCards.Add(allCards[random.Next(allCards.Count)]);
+                        var cardToAdd = allCards[random.Next(allCards.Count)];
+                        if (!selectedCards.Contains(cardToAdd))
+                        {
+                            selectedCards.Add(cardToAdd);
+                        }
+                    }
+                    if(selectedCards.Count < 9)
+                    {
+                        continue;
                     }
                 }
-                var embed = BuildCardEmbed(selectedCards[0], 1, selectedCards.Count);
+                
+                var selectedCardList = selectedCards.ToList();
+                var embed = BuildCardEmbed(selectedCardList[0], 1, selectedCardList.Count);
                 var message = await ReplyAsync(embed: embed);
 
-                var session = new PackSession(message.Id, Context.User.Id, selectedCards);
+                var session = new PackSession(message.Id, Context.User.Id, selectedCardList);
                 ActiveSessions[message.Id] = session;
                 
                 await message.AddReactionAsync(new Emoji("◀️"));
