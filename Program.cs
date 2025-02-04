@@ -13,11 +13,12 @@ namespace DiscordBot
         public static CommandService Commands { get; set; }
         public static IServiceProvider Services { get; private set; }
 
+        private CommandsModule _commandsModule;
         static async Task Main(string[] args)
         {
             await new Program().RunBotAsync();
-        }
 
+        }
         public async Task RunBotAsync()
         {
             Env.Load();
@@ -33,12 +34,15 @@ namespace DiscordBot
             {
                 GatewayIntents = GatewayIntents.Guilds |
                                  GatewayIntents.GuildMessages |
-                                 GatewayIntents.MessageContent
+                                 GatewayIntents.MessageContent |
+                                 GatewayIntents.GuildMessageReactions
             };
+            
             var client = new DiscordSocketClient(config);
+            _commandsModule = new CommandsModule();
+            client.ReactionAdded += _commandsModule.HandleReactionAdded;
             Commands = new CommandService();
             Services = new ServiceCollection().AddSingleton(client).AddSingleton(Commands).BuildServiceProvider();
-
             var bot = new Bot(client);
             await CommandHandler.RegisterCommandsAsync(Program.Services);
 
