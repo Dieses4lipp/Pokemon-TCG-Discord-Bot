@@ -3,6 +3,7 @@ using Discord.Commands;
 using Discord.WebSocket;
 using Newtonsoft.Json;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace DiscordBot
 {
@@ -10,18 +11,31 @@ namespace DiscordBot
     {
         private static readonly HttpClient _httpClient = new HttpClient();
         private static readonly string ApiUrl = "https://api.pokemontcg.io/v2/cards";
-
         private static readonly Dictionary<ulong, PackSession> ActiveSessions = new();
+        private static readonly Dictionary<ulong, SetSession> ActiveSetSessions = new();
+
+        // Constants for card rarity chances and other settings
+        private static readonly Dictionary<string, double> RarityChances = new()
+        {
+            {"Common", 0.50 },
+            {"Uncommon", 0.20 },
+            {"Rare", 0.15 },
+            {"Rare Holo", 0.05 },
+            {"Ultra Rare", 0.07 },
+            {"Secret Rare", 0.03 }
+        };
 
         [Command("pullcard")]
-        public async Task PullCardAsync()
+        public async Task PullCardAsync(string setId = null)
         {
             try
             {
-                var cardData = await GetRandomCards(1);
+                var cardData = await GetRandomCards(1, setId);
                 if (cardData.Count == 0)
                 {
-                    await ReplyAsync("No cards found!");
+                    await ReplyAsync(setId == null
+                        ? "No cards found!"
+                        : $"No cards found for set: {setId}!");
                     return;
                 }
 
@@ -31,78 +45,58 @@ namespace DiscordBot
             }
             catch (Exception ex)
             {
-                await ReplyAsync("An error occurred while retrieving the card: " + ex.Message);
+                await ReplyAsync($"An error occurred while retrieving the card: {ex.Message}");
             }
         }
+
         [Command("pullpack")]
-        public async Task PullPackAsync()
+        public async Task PullPackAsync(string setId)
         {
             try
             {
-                var allCards = await GetRandomCards(100);
+                var allCards = await GetRandomCards(100, setId);
                 if (allCards.Count == 0)
                 {
-                    await ReplyAsync("No cards found!");
+                    await ReplyAsync($"No cards found for set: {setId}!");
                     return;
                 }
+
                 var random = new Random();
-                var rarityChances = new Dictionary<string, double>()
-                {
-                    {"Common", 0.70 },
-                    {"Uncommon", 0.20 },
-                    {"Rare", 0.10 },
-                    {"Rare Holo", 0.05 },
-                    {"Ultra Rare", 0.03 },
-                    {"Secret Rare", 0.01 }
-                };
                 var selectedCards = new HashSet<Card>();
                 while (selectedCards.Count < 9)
                 {
-                    string selectedRarity = RollRarity(random, rarityChances);
+                    string selectedRarity = RollRarity(random);
                     var possibleCards = allCards.Where(c => c.Rarity == selectedRarity).ToList();
-                    if(possibleCards.Count > 0)
-                    {
-                        var cardToAdd = possibleCards[random.Next(possibleCards.Count)];
-                        if (!selectedCards.Contains(cardToAdd))
-                        {
-                            selectedCards.Add(cardToAdd);
-                        }
-                    }
-                    else
-                    {
-                        var cardToAdd = allCards[random.Next(allCards.Count)];
-                        if (!selectedCards.Contains(cardToAdd))
-                        {
-                            selectedCards.Add(cardToAdd);
-                        }
-                    }
-                    if(selectedCards.Count < 9)
-                    {
-                        continue;
-                    }
+
+                    var cardToAdd = possibleCards.Count > 0
+                        ? possibleCards[random.Next(possibleCards.Count)]
+                        : allCards[random.Next(allCards.Count)];
+
+                    selectedCards.Add(cardToAdd);
                 }
-                
+
                 var selectedCardList = selectedCards.ToList();
                 var embed = BuildCardEmbed(selectedCardList[0], 1, selectedCardList.Count);
                 var message = await ReplyAsync(embed: embed);
 
                 var session = new PackSession(message.Id, Context.User.Id, selectedCardList);
                 ActiveSessions[message.Id] = session;
-                
+
                 await message.AddReactionAsync(new Emoji("◀️"));
                 await message.AddReactionAsync(new Emoji("▶️"));
-
             }
             catch (Exception ex)
             {
-                await ReplyAsync("An error occurred while retrieving the pack: " + ex.Message);
+                await ReplyAsync($"An error occurred while retrieving the pack: {ex.Message}");
             }
         }
-        private string RollRarity(Random random, Dictionary<string, double> rarityChances)
+
+        private string RollRarity(Random random)
         {
             double roll = random.NextDouble();
             double cumulative = 0.0;
-            foreach (var rarity in rarityChances)
+
+            foreach (var rarity in RarityChances)
             {
                 cumulative += rarity.Value;
                 if (roll <= cumulative)
@@ -110,30 +104,10 @@ namespace DiscordBot
                     return rarity.Key;
                 }
             }
+
             return "Common";
         }
-        public async Task HandleReactionAdded(Cacheable<IUserMessage, ulong> cache, Cacheable<IMessageChannel, ulong> channel, SocketReaction reaction)
-        {
-            if (!ActiveSessions.ContainsKey(reaction.MessageId)) return;
-            if (reaction.User.Value.IsBot) return;
 
-            var session = ActiveSessions[reaction.MessageId];
-            if (reaction.UserId != session.UserId) return;
-            if(session.CurrentIndex < 0)
-            {
-                session.CurrentIndex = 0;
-            }
-            if (reaction.Emote.Name == "▶️")
-                session.CurrentIndex = (session.CurrentIndex + 1) % session.Cards.Count;
-            else if (reaction.Emote.Name == "◀️")
-                session.CurrentIndex = (session.CurrentIndex - 1 + session.Cards.Count) % session.Cards.Count;
-            else
-                return;
-
-            var message = await cache.GetOrDownloadAsync();
-            await message.ModifyAsync(m => m.Embed = BuildCardEmbed(session.Cards[session.CurrentIndex], session.CurrentIndex + 1, session.Cards.Count));
-            await message.RemoveReactionAsync(reaction.Emote, reaction.User.Value);
-        }
         private static Embed BuildCardEmbed(Card card, int current, int total)
         {
             return new EmbedBuilder()
@@ -144,22 +118,89 @@ namespace DiscordBot
                 .Build();
         }
 
-        private async Task<List<Card>> GetRandomCards(int count)
+        public async Task HandleReactionAdded(Cacheable<IUserMessage, ulong> cache, Cacheable<IMessageChannel, ulong> channel, SocketReaction reaction)
+        {
+            if (!ActiveSessions.ContainsKey(reaction.MessageId)) return;
+            if (reaction.User.Value.IsBot) return;
+
+            var session = ActiveSessions[reaction.MessageId];
+            if (reaction.UserId != session.UserId) return;
+
+            session.CurrentIndex = (reaction.Emote.Name == "▶️")
+                ? (session.CurrentIndex + 1) % session.Cards.Count
+                : (session.CurrentIndex - 1 + session.Cards.Count) % session.Cards.Count;
+
+            var message = await cache.GetOrDownloadAsync();
+            await message.ModifyAsync(m => m.Embed = BuildCardEmbed(session.Cards[session.CurrentIndex], session.CurrentIndex + 1, session.Cards.Count));
+            await message.RemoveReactionAsync(reaction.Emote, reaction.User.Value);
+        }
+
+        private async Task<List<Card>> GetRandomCards(int count, string setId)
         {
             var random = new Random();
-            int pageSize = 250;
-            int randomPage = random.Next(1, 50); 
+            const int pageSize = 250;
+            int randomPage = random.Next(1, 10);
 
-            string requestUrl = $"{ApiUrl}?page={randomPage}&pageSize={pageSize}";
+            string requestUrl = setId == null
+                ? $"{ApiUrl}?page={randomPage}&pageSize={pageSize}"
+                : $"{ApiUrl}?q=set.id%3A{setId}&pageSize={pageSize}";
 
-            var response = await _httpClient.GetStringAsync(requestUrl);
-            var cardData = JsonConvert.DeserializeObject<ApiResponse>(response);
+            try
+            {
+                var response = await _httpClient.GetStringAsync(requestUrl);
+                var cardData = JsonConvert.DeserializeObject<ApiResponse>(response);
 
-            if (cardData?.Data == null || cardData.Data.Count == 0)
+                return cardData?.Data?.OrderBy(_ => random.Next()).Take(count).ToList() ?? new List<Card>();
+            }
+            catch (Exception ex)
+            {
                 return new List<Card>();
-
-            return cardData.Data.OrderBy(_ => random.Next()).Take(count).ToList();
+            }
         }
+
+        [Command("sets")]
+        public async Task GetAllSetsAsync()
+        {
+            try
+            {
+                string requestUrl = "https://api.pokemontcg.io/v2/sets";
+                var response = await _httpClient.GetStringAsync(requestUrl);
+                var setData = JsonConvert.DeserializeObject<SetApiResponse>(response);
+
+                if (setData?.Data == null || setData.Data.Count == 0)
+                {
+                    await ReplyAsync("No sets found!");
+                    return;
+                }
+
+                var sets = setData.Data;
+                int batchSize = 25;
+
+                for (int i = 0; i < sets.Count; i += batchSize)
+                {
+                    var batchSets = sets.Skip(i).Take(batchSize).ToList();
+                    var embedBuilder = new EmbedBuilder()
+                        .WithTitle("Available Pokémon TCG Sets")
+                        .WithColor(Color.Blue);
+
+                    foreach (var set in batchSets)
+                    {
+                        var fieldText = $"ID: `{set.Id}`";
+                        var imageUrl = !string.IsNullOrEmpty(set.ImageUrl) ? set.ImageUrl : "https://images.pokemontcg.io/base1/symbol.png";
+
+                        embedBuilder.AddField(set.Name, fieldText, true);
+                        embedBuilder.WithThumbnailUrl(imageUrl);
+                    }
+
+                    await ReplyAsync(embed: embedBuilder.Build());
+                }
+            }
+            catch (Exception ex)
+            {
+                await ReplyAsync("An error occurred while retrieving sets: " + ex.Message);
+            }
+        }
+
 
         private class PackSession
         {
@@ -176,9 +217,39 @@ namespace DiscordBot
                 CurrentIndex = 0;
             }
         }
+
+        private class SetSession
+        {
+            public ulong MessageId { get; }
+            public ulong UserId { get; }
+            public List<List<Set>> Pages { get; }
+            public int CurrentPage { get; set; }
+
+            public SetSession(ulong messageId, ulong userId, List<List<Set>> pages)
+            {
+                MessageId = messageId;
+                UserId = userId;
+                Pages = pages;
+                CurrentPage = 0;
+            }
+        }
+
         public class ApiResponse
         {
             public List<Card> Data { get; set; }
+        }
+
+        public class SetApiResponse
+        {
+            public List<Set> Data { get; set; }
+        }
+
+        public class Set
+        {
+            public string Name { get; set; }
+            public string Id { get; set; }
+            public string ImageUrl { get; set; } 
+
         }
 
         public class Card
@@ -193,6 +264,4 @@ namespace DiscordBot
             public string Small { get; set; }
         }
     }
-
 }
-
