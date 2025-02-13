@@ -37,16 +37,29 @@ namespace DiscordBot
                                  GatewayIntents.MessageContent |
                                  GatewayIntents.GuildMessageReactions
             };
-            
-            var client = new DiscordSocketClient(config);
-            _commandsModule = new CommandsModule();
-            client.ReactionAdded += _commandsModule.HandleReactionAdded;
-            Commands = new CommandService();
-            Services = new ServiceCollection().AddSingleton(client).AddSingleton(Commands).BuildServiceProvider();
-            var bot = new Bot(client);
-            await CommandHandler.RegisterCommandsAsync(Program.Services);
 
+            var client = new DiscordSocketClient(config);
+            Commands = new CommandService();
+
+            // Erstelle den DI-Container und registriere die Services
+            Services = new ServiceCollection()
+                .AddSingleton(client)
+                .AddSingleton(Commands)
+                .AddSingleton<CommandsModule>() // Füge CommandsModule hier hinzu!
+                .BuildServiceProvider();
+
+            var bot = new Bot(client);
+
+            // Hole CommandsModule aus DI und registriere das Event
+            var commandsModule = Services.GetRequiredService<CommandsModule>();
+            client.ReactionAdded += commandsModule.HandleReactionAdded;
+            client.ReactionAdded += commandsModule.HandleSetReactionAdded;
+            var interactionHandler = new InteractionHandler(client);
+
+
+            await CommandHandler.RegisterCommandsAsync(Services);
             await bot.StartAsync(botToken);
         }
+
     }
 }

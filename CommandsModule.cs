@@ -11,8 +11,10 @@ namespace DiscordBot
     {
         private static readonly HttpClient _httpClient = new HttpClient();
         private static readonly string ApiUrl = "https://api.pokemontcg.io/v2/cards";
+        private static readonly string SetsApiUrl = "https://api.pokemontcg.io/v2/sets";
         private static readonly Dictionary<ulong, PackSession> ActiveSessions = new();
         private static readonly Dictionary<ulong, SetSession> ActiveSetSessions = new();
+
 
         // Constants for card rarity chances and other settings
         private static readonly Dictionary<string, double> RarityChances = new()
@@ -163,8 +165,7 @@ namespace DiscordBot
         {
             try
             {
-                string requestUrl = "https://api.pokemontcg.io/v2/sets";
-                var response = await _httpClient.GetStringAsync(requestUrl);
+                var response = await _httpClient.GetStringAsync(SetsApiUrl);
                 var setData = JsonConvert.DeserializeObject<SetApiResponse>(response);
 
                 if (setData?.Data == null || setData.Data.Count == 0)
@@ -173,31 +174,77 @@ namespace DiscordBot
                     return;
                 }
 
-                var sets = setData.Data;
-                int batchSize = 25;
+                // Liste der Set-Optionen für das Dropdown-Menü
+                var selectMenu = new SelectMenuBuilder()
+                    .WithPlaceholder("Wähle ein Set aus")
+                    .WithCustomId("set_selection")
+                    .WithMinValues(1)
+                    .WithMaxValues(1);
 
-                for (int i = 0; i < sets.Count; i += batchSize)
+                foreach (var set in setData.Data.Take(25)) // Discord erlaubt maximal 25 Optionen
                 {
-                    var batchSets = sets.Skip(i).Take(batchSize).ToList();
-                    var embedBuilder = new EmbedBuilder()
-                        .WithTitle("Available Pokémon TCG Sets")
-                        .WithColor(Color.Blue);
-
-                    foreach (var set in batchSets)
-                    {
-                        var fieldText = $"ID: `{set.Id}`";
-                        var imageUrl = !string.IsNullOrEmpty(set.ImageUrl) ? set.ImageUrl : "https://images.pokemontcg.io/base1/symbol.png";
-
-                        embedBuilder.AddField(set.Name, fieldText, true);
-                        embedBuilder.WithThumbnailUrl(imageUrl);
-                    }
-
-                    await ReplyAsync(embed: embedBuilder.Build());
+                    selectMenu.AddOption(set.Name, set.Id, $"ID: {set.Id}");
                 }
+
+                var component = new ComponentBuilder()
+                    .WithSelectMenu(selectMenu);
+
+                var embed = new EmbedBuilder()
+                    .WithTitle("Pokémon Karten Sets")
+                    .WithDescription("Wähle ein Set aus, um Karten zu ziehen.")
+                    .WithColor(Color.Green)
+                    .Build();
+
+                await ReplyAsync(embed: embed, components: component.Build());
             }
             catch (Exception ex)
             {
-                await ReplyAsync("An error occurred while retrieving sets: " + ex.Message);
+                await ReplyAsync("Ein Fehler ist aufgetreten: " + ex.Message);
+            }
+        }
+
+        public async Task HandleSetReactionAdded(Cacheable<IUserMessage, ulong> cache, Cacheable<IMessageChannel, ulong> channel, SocketReaction reaction)
+        {
+            if (reaction.User.Value.IsBot) return;
+
+            if (ActiveSetSessions.ContainsKey(reaction.MessageId))
+            {
+                var session = ActiveSetSessions[reaction.MessageId];
+                if (reaction.UserId != session.UserId) return;
+
+                session.CurrentIndex = (reaction.Emote.Name == "▶️")
+                    ? (session.CurrentIndex + 1) % session.Sets.Count
+                    : (session.CurrentIndex - 1 + session.Sets.Count) % session.Sets.Count;
+
+                var message = await cache.GetOrDownloadAsync();
+                await message.ModifyAsync(m => m.Embed = BuildSetEmbed(session.Sets[session.CurrentIndex], session.CurrentIndex + 1, session.Sets.Count));
+                await message.RemoveReactionAsync(reaction.Emote, reaction.User.Value);
+            }
+        }
+
+        private static Embed BuildSetEmbed(Set set, int current, int total)
+        {
+            return new EmbedBuilder()
+                .WithTitle($"Set: {set.Name} ({current}/{total})")
+                .WithDescription($"ID: `{set.Id}`")
+                .WithThumbnailUrl(string.IsNullOrEmpty(set.ImageUrl) ? "https://images.pokemontcg.io/base1/symbol.png" : set.ImageUrl)
+                .WithColor(Color.Green)
+                .Build();
+        }
+
+        private class SetSession
+        {
+            public ulong MessageId { get; }
+            public ulong UserId { get; }
+            public List<Set> Sets { get; }
+            public int CurrentIndex { get; set; }
+
+            public SetSession(ulong messageId, ulong userId, List<Set> sets)
+            {
+                MessageId = messageId;
+                UserId = userId;
+                Sets = sets;
+                CurrentIndex = 0;
             }
         }
 
@@ -215,22 +262,6 @@ namespace DiscordBot
                 UserId = userId;
                 Cards = cards;
                 CurrentIndex = 0;
-            }
-        }
-
-        private class SetSession
-        {
-            public ulong MessageId { get; }
-            public ulong UserId { get; }
-            public List<List<Set>> Pages { get; }
-            public int CurrentPage { get; set; }
-
-            public SetSession(ulong messageId, ulong userId, List<List<Set>> pages)
-            {
-                MessageId = messageId;
-                UserId = userId;
-                Pages = pages;
-                CurrentPage = 0;
             }
         }
 
