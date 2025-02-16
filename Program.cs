@@ -43,10 +43,11 @@ namespace DiscordBot
 
             // Erstelle den DI-Container und registriere die Services
             Services = new ServiceCollection()
-                .AddSingleton(client)
-                .AddSingleton(Commands)
-                .AddSingleton<CommandsModule>() // Füge CommandsModule hier hinzu!
-                .BuildServiceProvider();
+    .AddSingleton(client)
+    .AddSingleton(Commands)
+    .AddSingleton<CommandsModule>()
+    .AddSingleton<InteractionHandler>() 
+    .BuildServiceProvider();
 
             var bot = new Bot(client);
 
@@ -54,7 +55,9 @@ namespace DiscordBot
             var commandsModule = Services.GetRequiredService<CommandsModule>();
             client.ReactionAdded += commandsModule.HandleReactionAdded;
             client.ReactionAdded += commandsModule.HandleSetReactionAdded;
-            var interactionHandler = new InteractionHandler(client);
+            var interactionHandler = Services.GetRequiredService<InteractionHandler>();
+            client.SelectMenuExecuted += interactionHandler.HandleSelectMenu;
+
 
 
             await CommandHandler.RegisterCommandsAsync(Services);

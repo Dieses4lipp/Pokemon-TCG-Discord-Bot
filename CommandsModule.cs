@@ -12,11 +12,10 @@ namespace DiscordBot
         private static readonly HttpClient _httpClient = new HttpClient();
         private static readonly string ApiUrl = "https://api.pokemontcg.io/v2/cards";
         private static readonly string SetsApiUrl = "https://api.pokemontcg.io/v2/sets";
-        private static readonly Dictionary<ulong, PackSession> ActiveSessions = new();
+        public static readonly Dictionary<ulong, PackSession> ActiveSessions = new();
         private static readonly Dictionary<ulong, SetSession> ActiveSetSessions = new();
 
 
-        // Constants for card rarity chances and other settings
         private static readonly Dictionary<string, double> RarityChances = new()
         {
             {"Common", 0.50 },
@@ -110,7 +109,7 @@ namespace DiscordBot
             return "Common";
         }
 
-        private static Embed BuildCardEmbed(Card card, int current, int total)
+        public static Embed BuildCardEmbed(Card card, int current, int total)
         {
             return new EmbedBuilder()
                 .WithTitle($"{card.Name} ({current}/{total})")
@@ -137,7 +136,7 @@ namespace DiscordBot
             await message.RemoveReactionAsync(reaction.Emote, reaction.User.Value);
         }
 
-        private async Task<List<Card>> GetRandomCards(int count, string setId)
+        public async Task<List<Card>> GetRandomCards(int count, string setId)
         {
             var random = new Random();
             const int pageSize = 250;
@@ -174,16 +173,15 @@ namespace DiscordBot
                     return;
                 }
 
-                // Liste der Set-Optionen für das Dropdown-Menü
                 var selectMenu = new SelectMenuBuilder()
-                    .WithPlaceholder("Wähle ein Set aus")
+                    .WithPlaceholder("Select a set")
                     .WithCustomId("set_selection")
                     .WithMinValues(1)
                     .WithMaxValues(1);
 
-                foreach (var set in setData.Data.Take(25)) // Discord erlaubt maximal 25 Optionen
+                foreach (var set in setData.Data.Take(25))
                 {
-                    selectMenu.AddOption(set.Name, set.Id, $"ID: {set.Id}");
+                    selectMenu.AddOption(set.Name, set.Id.ToString(), $"ID: {set.Id}");
                 }
 
                 var component = new ComponentBuilder()
@@ -191,7 +189,7 @@ namespace DiscordBot
 
                 var embed = new EmbedBuilder()
                     .WithTitle("Pokémon Karten Sets")
-                    .WithDescription("Wähle ein Set aus, um Karten zu ziehen.")
+                    .WithDescription("Die Sets werden angezeigt - Dies ist keine Auswahl nur zur Informationen für die Pack Set IDs")
                     .WithColor(Color.Green)
                     .Build();
 
@@ -199,7 +197,7 @@ namespace DiscordBot
             }
             catch (Exception ex)
             {
-                await ReplyAsync("Ein Fehler ist aufgetreten: " + ex.Message);
+                await ReplyAsync("An error occurred: " + ex.Message);
             }
         }
 
@@ -249,7 +247,7 @@ namespace DiscordBot
         }
 
 
-        private class PackSession
+        public class PackSession
         {
             public ulong MessageId { get; }
             public ulong UserId { get; }
