@@ -85,12 +85,14 @@ namespace DiscordBot
 
                 await message.AddReactionAsync(new Emoji("◀️"));
                 await message.AddReactionAsync(new Emoji("▶️"));
+                await message.AddReactionAsync(new Emoji("💾")); // Add the 💾 reaction for saving the card
             }
             catch (Exception ex)
             {
                 await ReplyAsync($"An error occurred while retrieving the pack: {ex.Message}");
             }
         }
+
 
         private string RollRarity(Random random)
         {
@@ -119,21 +121,76 @@ namespace DiscordBot
                 .Build();
         }
 
+
         public async Task HandleReactionAdded(Cacheable<IUserMessage, ulong> cache, Cacheable<IMessageChannel, ulong> channel, SocketReaction reaction)
         {
-            if (!ActiveSessions.ContainsKey(reaction.MessageId)) return;
             if (reaction.User.Value.IsBot) return;
 
+            if (!ActiveSessions.ContainsKey(reaction.MessageId)) return;
+
             var session = ActiveSessions[reaction.MessageId];
+
             if (reaction.UserId != session.UserId) return;
 
-            session.CurrentIndex = (reaction.Emote.Name == "▶️")
-                ? (session.CurrentIndex + 1) % session.Cards.Count
-                : (session.CurrentIndex - 1 + session.Cards.Count) % session.Cards.Count;
-
             var message = await cache.GetOrDownloadAsync();
-            await message.ModifyAsync(m => m.Embed = BuildCardEmbed(session.Cards[session.CurrentIndex], session.CurrentIndex + 1, session.Cards.Count));
+
+            if (reaction.Emote.Name == "▶️" || reaction.Emote.Name == "◀️")
+            {
+                // Handle switching between cards
+                session.CurrentIndex = (reaction.Emote.Name == "▶️")
+                    ? (session.CurrentIndex + 1) % session.Cards.Count
+                    : (session.CurrentIndex - 1 + session.Cards.Count) % session.Cards.Count;
+
+                await message.ModifyAsync(m => m.Embed = BuildCardEmbed(session.Cards[session.CurrentIndex], session.CurrentIndex + 1, session.Cards.Count));
+            }
+            else if (reaction.Emote.Name == "💾")
+            {
+                // Handle saving the card
+                var cardToSave = session.Cards[session.CurrentIndex];
+
+                // Load user's card collection
+                var collection = await CardStorage.LoadUserCardsAsync(session.UserId);
+
+                // Check if the user already has 10 cards
+                if (collection.Cards.Count >= 10)
+                {
+                    await ReplyAsync("You can only store up to 10 cards!");
+                    return;
+                }
+
+                // Add the current card to the user's collection
+                collection.Cards.Add(cardToSave);
+
+                // Save the updated collection to the user's JSON file
+                await CardStorage.SaveUserCardsAsync(collection);
+
+                var messageChannel = await channel.GetOrDownloadAsync();
+                await messageChannel.SendMessageAsync($"Card '{cardToSave.Name}' has been saved to your collection!");
+
+            }
+
+            // Remove the reaction after processing it
             await message.RemoveReactionAsync(reaction.Emote, reaction.User.Value);
+        }
+        public static async Task SaveUserCardsAsync(UserCardCollection collection)
+        {
+            string userFilePath = Path.Combine(CardStorage.UserCardsDirectory, $"{collection.UserId}.json");
+
+            var json = JsonConvert.SerializeObject(collection, Formatting.Indented);
+            await File.WriteAllTextAsync(userFilePath, json);
+        }
+
+        public static async Task<UserCardCollection> LoadUserCardsAsync(ulong userId)
+        {
+            string userFilePath = Path.Combine(CardStorage.UserCardsDirectory, $"{userId}.json");
+
+            if (File.Exists(userFilePath))
+            {
+                var json = await File.ReadAllTextAsync(userFilePath);
+                return JsonConvert.DeserializeObject<UserCardCollection>(json) ?? new UserCardCollection();
+            }
+
+            return new UserCardCollection { UserId = userId, Cards = new List<Card>() }; // Return an empty collection if file doesn't exist
         }
 
         public async Task<List<Card>> GetRandomCards(int count, string setId)
@@ -281,12 +338,6 @@ namespace DiscordBot
 
         }
 
-        public class Card
-        {
-            public string Name { get; set; }
-            public string Rarity { get; set; }
-            public Images Images { get; set; }
-        }
 
         public class Images
         {

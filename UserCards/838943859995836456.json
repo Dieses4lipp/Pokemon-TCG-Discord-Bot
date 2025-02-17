@@ -1,0 +1,19 @@
+{
+  "UserId": 838943859995836456,
+  "Cards": [
+    {
+      "Name": "Azurill",
+      "Rarity": "Uncommon",
+      "Images": {
+        "Small": "https://images.pokemontcg.io/ex2/31.png"
+      }
+    },
+    {
+      "Name": "Parasect",
+      "Rarity": "Uncommon",
+      "Images": {
+        "Small": "https://images.pokemontcg.io/base2/41.png"
+      }
+    }
+  ]
+}
