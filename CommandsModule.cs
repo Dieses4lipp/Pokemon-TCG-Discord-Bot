@@ -26,6 +26,31 @@ namespace DiscordBot
             {"Secret Rare", 0.03 }
         };
 
+        [Command("mycards")]
+        public async Task MyCardsAsync()
+        {
+            // Load the user's saved card collection from JSON
+            var collection = await CardStorage.LoadUserCardsAsync(Context.User.Id);
+            if (collection.Cards == null || collection.Cards.Count == 0)
+            {
+                await ReplyAsync("You don't have any saved cards!");
+                return;
+            }
+
+            // Build an embed using the first saved card
+            var embed = BuildCardEmbed(collection.Cards[0], 1, collection.Cards.Count);
+            var message = await ReplyAsync(embed: embed);
+
+            // Create a session for navigating through the user's cards
+            var session = new PackSession(message.Id, Context.User.Id, collection.Cards);
+            ActiveSessions[message.Id] = session;
+
+            // Add reactions for navigation
+            await message.AddReactionAsync(new Emoji("◀️"));
+            await message.AddReactionAsync(new Emoji("▶️"));
+            await message.AddReactionAsync(new Emoji("🗑️"));
+        }
+
         [Command("pullcard")]
         public async Task PullCardAsync(string setId = null)
         {
@@ -125,11 +150,9 @@ namespace DiscordBot
         public async Task HandleReactionAdded(Cacheable<IUserMessage, ulong> cache, Cacheable<IMessageChannel, ulong> channel, SocketReaction reaction)
         {
             if (reaction.User.Value.IsBot) return;
-
             if (!ActiveSessions.ContainsKey(reaction.MessageId)) return;
 
             var session = ActiveSessions[reaction.MessageId];
-
             if (reaction.UserId != session.UserId) return;
 
             var message = await cache.GetOrDownloadAsync();
@@ -154,7 +177,8 @@ namespace DiscordBot
                 // Check if the user already has 10 cards
                 if (collection.Cards.Count >= 10)
                 {
-                    await ReplyAsync("You can only store up to 10 cards!");
+                    var msgChannel = await channel.GetOrDownloadAsync();
+                    await msgChannel.SendMessageAsync("You can only store up to 10 cards!");
                     return;
                 }
 
@@ -164,14 +188,57 @@ namespace DiscordBot
                 // Save the updated collection to the user's JSON file
                 await CardStorage.SaveUserCardsAsync(collection);
 
-                var messageChannel = await channel.GetOrDownloadAsync();
-                await messageChannel.SendMessageAsync($"Card '{cardToSave.Name}' has been saved to your collection!");
+                var channelForMsg = await channel.GetOrDownloadAsync();
+                await channelForMsg.SendMessageAsync($"Card '{cardToSave.Name}' has been saved to your collection!");
+            }
+            else if (reaction.Emote.Name == "🗑️")
+            {
+                // Handle deleting the card from the saved collection
+                var cardToDelete = session.Cards[session.CurrentIndex];
 
+                // Load user's card collection from JSON
+                var collection = await CardStorage.LoadUserCardsAsync(session.UserId);
+
+                // Remove the card. Here we match by name and rarity (adjust if needed for uniqueness).
+                int removedCount = collection.Cards.RemoveAll(c => c.Name == cardToDelete.Name && c.Rarity == cardToDelete.Rarity);
+                if (removedCount > 0)
+                {
+                    // Save the updated collection
+                    await CardStorage.SaveUserCardsAsync(collection);
+
+                    // Also remove the card from the session's list
+                    session.Cards.RemoveAt(session.CurrentIndex);
+
+                    // If no cards remain, delete the message and remove the session
+                    if (session.Cards.Count == 0)
+                    {
+                        await message.DeleteAsync();
+                        ActiveSessions.Remove(message.Id);
+                        return;
+                    }
+
+                    // Adjust the index if necessary
+                    if (session.CurrentIndex >= session.Cards.Count)
+                        session.CurrentIndex = session.Cards.Count - 1;
+
+                    // Update the embed with the new current card
+                    await message.ModifyAsync(m => m.Embed = BuildCardEmbed(session.Cards[session.CurrentIndex], session.CurrentIndex + 1, session.Cards.Count));
+
+                    var channelForMsg = await channel.GetOrDownloadAsync();
+                    await channelForMsg.SendMessageAsync($"Card '{cardToDelete.Name}' has been removed from your collection!");
+                }
+                else
+                {
+                    var channelForMsg = await channel.GetOrDownloadAsync();
+                    await channelForMsg.SendMessageAsync("Card not found in your collection.");
+                }
             }
 
             // Remove the reaction after processing it
             await message.RemoveReactionAsync(reaction.Emote, reaction.User.Value);
         }
+
+
         public static async Task SaveUserCardsAsync(UserCardCollection collection)
         {
             string userFilePath = Path.Combine(CardStorage.UserCardsDirectory, $"{collection.UserId}.json");
@@ -275,6 +342,23 @@ namespace DiscordBot
                 await message.ModifyAsync(m => m.Embed = BuildSetEmbed(session.Sets[session.CurrentIndex], session.CurrentIndex + 1, session.Sets.Count));
                 await message.RemoveReactionAsync(reaction.Emote, reaction.User.Value);
             }
+        }
+        public static Task HandleUserLeft(SocketGuildUser user)
+        {
+            // Construct the path to the user's JSON file
+            string userFilePath = Path.Combine(CardStorage.UserCardsDirectory, $"{user.Id}.json");
+
+            if (File.Exists(userFilePath))
+            {
+                File.Delete(userFilePath);
+                Console.WriteLine($"Deleted JSON file for user {user.Username} ({user.Id}).");
+            }
+            else
+            {
+                Console.WriteLine($"No JSON file found for user {user.Username} ({user.Id}).");
+            }
+
+            return Task.CompletedTask;
         }
 
         private static Embed BuildSetEmbed(Set set, int current, int total)

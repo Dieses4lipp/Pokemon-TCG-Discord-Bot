@@ -1,0 +1,75 @@
+{
+  "UserId": 333529808187293696,
+  "Cards": [
+    {
+      "Name": "Pikachu",
+      "Rarity": "Common",
+      "Images": {
+        "Small": "https://images.pokemontcg.io/ex6/74.png"
+      }
+    },
+    {
+      "Name": "Scyther",
+      "Rarity": "Rare",
+      "Images": {
+        "Small": "https://images.pokemontcg.io/ex6/29.png"
+      }
+    },
+    {
+      "Name": "Pidgey",
+      "Rarity": "Common",
+      "Images": {
+        "Small": "https://images.pokemontcg.io/ex6/73.png"
+      }
+    },
+    {
+      "Name": "Magikarp",
+      "Rarity": "Common",
+      "Images": {
+        "Small": "https://images.pokemontcg.io/ex6/67.png"
+      }
+    },
+    {
+      "Name": "Poliwag",
+      "Rarity": "Common",
+      "Images": {
+        "Small": "https://images.pokemontcg.io/ex6/75.png"
+      }
+    },
+    {
+      "Name": "Bulbasaur",
+      "Rarity": "Common",
+      "Images": {
+        "Small": "https://images.pokemontcg.io/ex6/55.png"
+      }
+    },
+    {
+      "Name": "Nidorina",
+      "Rarity": "Uncommon",
+      "Images": {
+        "Small": "https://images.pokemontcg.io/ex6/40.png"
+      }
+    },
+    {
+      "Name": "Diglett",
+      "Rarity": "Common",
+      "Images": {
+        "Small": "https://images.pokemontcg.io/ex6/61.png"
+      }
+    },
+    {
+      "Name": "Cubone",
+      "Rarity": "Common",
+      "Images": {
+        "Small": "https://images.pokemontcg.io/ex6/60.png"
+      }
+    },
+    {
+      "Name": "PokéDex HANDY909",
+      "Rarity": "Uncommon",
+      "Images": {
+        "Small": "https://images.pokemontcg.io/ex6/96.png"
+      }
+    }
+  ]
+}

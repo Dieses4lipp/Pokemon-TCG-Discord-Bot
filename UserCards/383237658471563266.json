@@ -14,6 +14,13 @@
       "Images": {
         "Small": "https://images.pokemontcg.io/base2/50.png"
       }
+    },
+    {
+      "Name": "Lairon",
+      "Rarity": "Uncommon",
+      "Images": {
+        "Small": "https://images.pokemontcg.io/ex1/36.png"
+      }
     }
   ]
 }

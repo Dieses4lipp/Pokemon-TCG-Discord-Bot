@@ -55,6 +55,7 @@ namespace DiscordBot
             var commandsModule = Services.GetRequiredService<CommandsModule>();
             client.ReactionAdded += commandsModule.HandleReactionAdded;
             client.ReactionAdded += commandsModule.HandleSetReactionAdded;
+            client.UserLeft += commandsModule.HandleUserLeft;
             var interactionHandler = Services.GetRequiredService<InteractionHandler>();
             client.SelectMenuExecuted += interactionHandler.HandleSelectMenu;
 
