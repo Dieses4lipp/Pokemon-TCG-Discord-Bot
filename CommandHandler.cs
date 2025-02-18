@@ -7,8 +7,16 @@ using System.Threading.Tasks;
 
 namespace DiscordBot
 {
+    /// <summary>
+    /// Handles the registration of commands for the bot.
+    /// </summary>
     public static class CommandHandler
     {
+        /// <summary>
+        /// Registers all commands within the assembly.
+        /// </summary>
+        /// <param name="services">The service provider used to resolve services.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
         public static async Task RegisterCommandsAsync(IServiceProvider services)
         {
             var commandService = services.GetRequiredService<CommandService>();

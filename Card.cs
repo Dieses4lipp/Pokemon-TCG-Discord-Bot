@@ -7,11 +7,24 @@ using static DiscordBot.CommandsModule;
 
 namespace DiscordBot
 {
-
+    /// <summary>
+    /// Represents a Pokémon card with its name, rarity, and images.
+    /// </summary>
     public class Card
     {
+        /// <summary>
+        /// Gets or sets the name of the card.
+        /// </summary>
         public string Name { get; set; }
+
+        /// <summary>
+        /// Gets or sets the rarity of the card.
+        /// </summary>
         public string Rarity { get; set; }
+
+        /// <summary>
+        /// Gets or sets the images associated with the card.
+        /// </summary>
         public Images Images { get; set; }
     }
 }

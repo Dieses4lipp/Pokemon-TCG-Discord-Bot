@@ -2,20 +2,38 @@
 using Discord.Commands;
 using Discord.WebSocket;
 using Newtonsoft.Json;
-using System.Threading.Tasks;
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Threading.Tasks;
 
 namespace DiscordBot
 {
+    /// <summary>
+    /// Handles Discord commands for interacting with Pokémon cards and sets.
+    /// This includes pulling cards and packs, navigating card collections, and managing set selections.
+    /// </summary>
     public class CommandsModule : ModuleBase<SocketCommandContext>
     {
         private static readonly HttpClient _httpClient = new HttpClient();
         private static readonly string ApiUrl = "https://api.pokemontcg.io/v2/cards";
         private static readonly string SetsApiUrl = "https://api.pokemontcg.io/v2/sets";
+
+        /// <summary>
+        /// Stores active card navigation sessions mapped by message ID.
+        /// </summary>
         public static readonly Dictionary<ulong, PackSession> ActiveSessions = new();
+
+        /// <summary>
+        /// Stores active set navigation sessions mapped by message ID.
+        /// </summary>
         private static readonly Dictionary<ulong, SetSession> ActiveSetSessions = new();
 
-
+        /// <summary>
+        /// Maps card rarities to their corresponding probabilities.
+        /// </summary>
         private static readonly Dictionary<string, double> RarityChances = new()
         {
             {"Common", 0.50 },
@@ -26,10 +44,15 @@ namespace DiscordBot
             {"Secret Rare", 0.03 }
         };
 
+        /// <summary>
+        /// Retrieves and displays the current user's saved Pokémon cards.
+        /// The cards are shown in an embed with reactions for navigation.
+        /// </summary>
+        /// <returns>A task that represents the asynchronous operation.</returns>
         [Command("mycards")]
         public async Task MyCardsAsync()
         {
-            // Load the user's saved card collection from JSON
+            // Load the user's saved card collection from JSON.
             var collection = await CardStorage.LoadUserCardsAsync(Context.User.Id);
             if (collection.Cards == null || collection.Cards.Count == 0)
             {
@@ -37,20 +60,26 @@ namespace DiscordBot
                 return;
             }
 
-            // Build an embed using the first saved card
+            // Build an embed using the first saved card.
             var embed = BuildCardEmbed(collection.Cards[0], 1, collection.Cards.Count);
             var message = await ReplyAsync(embed: embed);
 
-            // Create a session for navigating through the user's cards
+            // Create a session for navigating through the user's cards.
             var session = new PackSession(message.Id, Context.User.Id, collection.Cards);
             ActiveSessions[message.Id] = session;
 
-            // Add reactions for navigation
+            // Add reactions for navigation.
             await message.AddReactionAsync(new Emoji("◀️"));
             await message.AddReactionAsync(new Emoji("▶️"));
             await message.AddReactionAsync(new Emoji("🗑️"));
         }
 
+        /// <summary>
+        /// Pulls a random Pokémon card from the API and displays it in an embed.
+        /// Optionally, the card can be filtered by a specific set.
+        /// </summary>
+        /// <param name="setId">The optional ID of the set to filter the card pull.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
         [Command("pullcard")]
         public async Task PullCardAsync(string setId = null)
         {
@@ -75,6 +104,12 @@ namespace DiscordBot
             }
         }
 
+        /// <summary>
+        /// Pulls a pack of 9 random Pokémon cards from the API (optionally filtered by set)
+        /// and displays them in an embed with navigation reactions.
+        /// </summary>
+        /// <param name="setId">The ID of the set to filter cards by.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
         [Command("pullpack")]
         public async Task PullPackAsync(string setId)
         {
@@ -110,7 +145,7 @@ namespace DiscordBot
 
                 await message.AddReactionAsync(new Emoji("◀️"));
                 await message.AddReactionAsync(new Emoji("▶️"));
-                await message.AddReactionAsync(new Emoji("💾")); // Add the 💾 reaction for saving the card
+                await message.AddReactionAsync(new Emoji("💾")); // Reaction for saving the card.
             }
             catch (Exception ex)
             {
@@ -118,7 +153,11 @@ namespace DiscordBot
             }
         }
 
-
+        /// <summary>
+        /// Determines the rarity of a card based on predefined probabilities.
+        /// </summary>
+        /// <param name="random">An instance of the random number generator.</param>
+        /// <returns>A string representing the selected rarity.</returns>
         private string RollRarity(Random random)
         {
             double roll = random.NextDouble();
@@ -136,6 +175,13 @@ namespace DiscordBot
             return "Common";
         }
 
+        /// <summary>
+        /// Builds an embed to display a Pokémon card.
+        /// </summary>
+        /// <param name="card">The card to display.</param>
+        /// <param name="current">The current index of the card within a session.</param>
+        /// <param name="total">The total number of cards in the session.</param>
+        /// <returns>An <see cref="Embed"/> representing the card's details.</returns>
         public static Embed BuildCardEmbed(Card card, int current, int total)
         {
             return new EmbedBuilder()
@@ -146,7 +192,13 @@ namespace DiscordBot
                 .Build();
         }
 
-
+        /// <summary>
+        /// Handles reactions added to a card embed message to navigate or modify the user's card collection.
+        /// </summary>
+        /// <param name="cache">The cached user message.</param>
+        /// <param name="channel">The channel where the message was sent.</param>
+        /// <param name="reaction">The reaction that was added.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
         public async Task HandleReactionAdded(Cacheable<IUserMessage, ulong> cache, Cacheable<IMessageChannel, ulong> channel, SocketReaction reaction)
         {
             if (reaction.User.Value.IsBot) return;
@@ -159,7 +211,7 @@ namespace DiscordBot
 
             if (reaction.Emote.Name == "▶️" || reaction.Emote.Name == "◀️")
             {
-                // Handle switching between cards
+                // Navigate through cards.
                 session.CurrentIndex = (reaction.Emote.Name == "▶️")
                     ? (session.CurrentIndex + 1) % session.Cards.Count
                     : (session.CurrentIndex - 1 + session.Cards.Count) % session.Cards.Count;
@@ -168,13 +220,10 @@ namespace DiscordBot
             }
             else if (reaction.Emote.Name == "💾")
             {
-                // Handle saving the card
+                // Save the current card.
                 var cardToSave = session.Cards[session.CurrentIndex];
-
-                // Load user's card collection
                 var collection = await CardStorage.LoadUserCardsAsync(session.UserId);
 
-                // Check if the user already has 10 cards
                 if (collection.Cards.Count >= 10)
                 {
                     var msgChannel = await channel.GetOrDownloadAsync();
@@ -182,10 +231,7 @@ namespace DiscordBot
                     return;
                 }
 
-                // Add the current card to the user's collection
                 collection.Cards.Add(cardToSave);
-
-                // Save the updated collection to the user's JSON file
                 await CardStorage.SaveUserCardsAsync(collection);
 
                 var channelForMsg = await channel.GetOrDownloadAsync();
@@ -193,23 +239,16 @@ namespace DiscordBot
             }
             else if (reaction.Emote.Name == "🗑️")
             {
-                // Handle deleting the card from the saved collection
+                // Delete the current card from the collection.
                 var cardToDelete = session.Cards[session.CurrentIndex];
-
-                // Load user's card collection from JSON
                 var collection = await CardStorage.LoadUserCardsAsync(session.UserId);
 
-                // Remove the card. Here we match by name and rarity (adjust if needed for uniqueness).
                 int removedCount = collection.Cards.RemoveAll(c => c.Name == cardToDelete.Name && c.Rarity == cardToDelete.Rarity);
                 if (removedCount > 0)
                 {
-                    // Save the updated collection
                     await CardStorage.SaveUserCardsAsync(collection);
-
-                    // Also remove the card from the session's list
                     session.Cards.RemoveAt(session.CurrentIndex);
 
-                    // If no cards remain, delete the message and remove the session
                     if (session.Cards.Count == 0)
                     {
                         await message.DeleteAsync();
@@ -217,11 +256,9 @@ namespace DiscordBot
                         return;
                     }
 
-                    // Adjust the index if necessary
                     if (session.CurrentIndex >= session.Cards.Count)
                         session.CurrentIndex = session.Cards.Count - 1;
 
-                    // Update the embed with the new current card
                     await message.ModifyAsync(m => m.Embed = BuildCardEmbed(session.Cards[session.CurrentIndex], session.CurrentIndex + 1, session.Cards.Count));
 
                     var channelForMsg = await channel.GetOrDownloadAsync();
@@ -234,32 +271,50 @@ namespace DiscordBot
                 }
             }
 
-            // Remove the reaction after processing it
+            // Remove the reaction after processing.
             await message.RemoveReactionAsync(reaction.Emote, reaction.User.Value);
         }
 
-
+        /// <summary>
+        /// Saves the specified user's card collection to a JSON file.
+        /// </summary>
+        /// <param name="collection">The user card collection to save.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
         public static async Task SaveUserCardsAsync(UserCardCollection collection)
         {
             string userFilePath = Path.Combine(CardStorage.UserCardsDirectory, $"{collection.UserId}.json");
-
             var json = JsonConvert.SerializeObject(collection, Formatting.Indented);
             await File.WriteAllTextAsync(userFilePath, json);
         }
 
+        /// <summary>
+        /// Loads the card collection for the specified user from a JSON file.
+        /// If the file does not exist, returns an empty collection.
+        /// </summary>
+        /// <param name="userId">The user's ID.</param>
+        /// <returns>
+        /// A task that returns a <see cref="UserCardCollection"/> representing the user's saved cards.
+        /// </returns>
         public static async Task<UserCardCollection> LoadUserCardsAsync(ulong userId)
         {
             string userFilePath = Path.Combine(CardStorage.UserCardsDirectory, $"{userId}.json");
-
             if (File.Exists(userFilePath))
             {
                 var json = await File.ReadAllTextAsync(userFilePath);
                 return JsonConvert.DeserializeObject<UserCardCollection>(json) ?? new UserCardCollection();
             }
-
-            return new UserCardCollection { UserId = userId, Cards = new List<Card>() }; // Return an empty collection if file doesn't exist
+            return new UserCardCollection { UserId = userId, Cards = new List<Card>() };
         }
 
+        /// <summary>
+        /// Retrieves a list of random Pokémon cards from the API.
+        /// Optionally filters by set ID.
+        /// </summary>
+        /// <param name="count">The number of cards to retrieve.</param>
+        /// <param name="setId">The set ID to filter cards by (optional).</param>
+        /// <returns>
+        /// A task that returns a list of <see cref="Card"/> objects.
+        /// </returns>
         public async Task<List<Card>> GetRandomCards(int count, string setId)
         {
             var random = new Random();
@@ -274,15 +329,18 @@ namespace DiscordBot
             {
                 var response = await _httpClient.GetStringAsync(requestUrl);
                 var cardData = JsonConvert.DeserializeObject<ApiResponse>(response);
-
                 return cardData?.Data?.OrderBy(_ => random.Next()).Take(count).ToList() ?? new List<Card>();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new List<Card>();
             }
         }
 
+        /// <summary>
+        /// Retrieves all Pokémon card sets from the API and displays them in an embed with a selection menu.
+        /// </summary>
+        /// <returns>A task that represents the asynchronous operation.</returns>
         [Command("sets")]
         public async Task GetAllSetsAsync()
         {
@@ -325,6 +383,13 @@ namespace DiscordBot
             }
         }
 
+        /// <summary>
+        /// Handles reactions added to a set embed message to navigate through available sets.
+        /// </summary>
+        /// <param name="cache">The cached user message.</param>
+        /// <param name="channel">The channel where the message is located.</param>
+        /// <param name="reaction">The reaction that was added.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
         public async Task HandleSetReactionAdded(Cacheable<IUserMessage, ulong> cache, Cacheable<IMessageChannel, ulong> channel, SocketReaction reaction)
         {
             if (reaction.User.Value.IsBot) return;
@@ -343,9 +408,15 @@ namespace DiscordBot
                 await message.RemoveReactionAsync(reaction.Emote, reaction.User.Value);
             }
         }
-        public static Task HandleUserLeft(SocketGuildUser user)
+
+        /// <summary>
+        /// Handles cleanup when a user leaves the guild by deleting their saved card collection.
+        /// </summary>
+        /// <param name="guild">The guild from which the user left.</param>
+        /// <param name="user">The user who left.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
+        public Task HandleUserLeft(SocketGuild guild, SocketUser user)
         {
-            // Construct the path to the user's JSON file
             string userFilePath = Path.Combine(CardStorage.UserCardsDirectory, $"{user.Id}.json");
 
             if (File.Exists(userFilePath))
@@ -361,6 +432,13 @@ namespace DiscordBot
             return Task.CompletedTask;
         }
 
+        /// <summary>
+        /// Builds an embed to display information about a Pokémon card set.
+        /// </summary>
+        /// <param name="set">The set to display.</param>
+        /// <param name="current">The current index of the set in a session.</param>
+        /// <param name="total">The total number of sets in the session.</param>
+        /// <returns>An <see cref="Embed"/> representing the set details.</returns>
         private static Embed BuildSetEmbed(Set set, int current, int total)
         {
             return new EmbedBuilder()
@@ -371,13 +449,37 @@ namespace DiscordBot
                 .Build();
         }
 
+        /// <summary>
+        /// Represents a session for navigating through a list of Pokémon card sets.
+        /// </summary>
         private class SetSession
         {
+            /// <summary>
+            /// Gets the message ID associated with the session.
+            /// </summary>
             public ulong MessageId { get; }
+
+            /// <summary>
+            /// Gets the user ID of the participant in the session.
+            /// </summary>
             public ulong UserId { get; }
+
+            /// <summary>
+            /// Gets the list of sets in the session.
+            /// </summary>
             public List<Set> Sets { get; }
+
+            /// <summary>
+            /// Gets or sets the current index of the displayed set.
+            /// </summary>
             public int CurrentIndex { get; set; }
 
+            /// <summary>
+            /// Initializes a new instance of the <see cref="SetSession"/> class.
+            /// </summary>
+            /// <param name="messageId">The message ID associated with the session.</param>
+            /// <param name="userId">The user ID of the session participant.</param>
+            /// <param name="sets">The list of sets to navigate.</param>
             public SetSession(ulong messageId, ulong userId, List<Set> sets)
             {
                 MessageId = messageId;
@@ -387,14 +489,37 @@ namespace DiscordBot
             }
         }
 
-
+        /// <summary>
+        /// Represents a session for navigating through a pack of Pokémon cards.
+        /// </summary>
         public class PackSession
         {
+            /// <summary>
+            /// Gets the message ID associated with the session.
+            /// </summary>
             public ulong MessageId { get; }
+
+            /// <summary>
+            /// Gets the user ID of the session participant.
+            /// </summary>
             public ulong UserId { get; }
+
+            /// <summary>
+            /// Gets the list of cards in the session.
+            /// </summary>
             public List<Card> Cards { get; }
+
+            /// <summary>
+            /// Gets or sets the current index of the displayed card.
+            /// </summary>
             public int CurrentIndex { get; set; }
 
+            /// <summary>
+            /// Initializes a new instance of the <see cref="PackSession"/> class.
+            /// </summary>
+            /// <param name="messageId">The message ID associated with the session.</param>
+            /// <param name="userId">The user ID of the session participant.</param>
+            /// <param name="cards">The list of cards to navigate.</param>
             public PackSession(ulong messageId, ulong userId, List<Card> cards)
             {
                 MessageId = messageId;
@@ -404,27 +529,57 @@ namespace DiscordBot
             }
         }
 
+        /// <summary>
+        /// Represents the API response containing a list of Pokémon cards.
+        /// </summary>
         public class ApiResponse
         {
+            /// <summary>
+            /// Gets or sets the list of cards returned from the API.
+            /// </summary>
             public List<Card> Data { get; set; }
         }
 
+        /// <summary>
+        /// Represents the API response containing a list of Pokémon card sets.
+        /// </summary>
         public class SetApiResponse
         {
+            /// <summary>
+            /// Gets or sets the list of sets returned from the API.
+            /// </summary>
             public List<Set> Data { get; set; }
         }
 
+        /// <summary>
+        /// Represents a Pokémon card set.
+        /// </summary>
         public class Set
         {
+            /// <summary>
+            /// Gets or sets the name of the set.
+            /// </summary>
             public string Name { get; set; }
-            public string Id { get; set; }
-            public string ImageUrl { get; set; } 
 
+            /// <summary>
+            /// Gets or sets the unique identifier for the set.
+            /// </summary>
+            public string Id { get; set; }
+
+            /// <summary>
+            /// Gets or sets the URL for the set's image.
+            /// </summary>
+            public string ImageUrl { get; set; }
         }
 
-
+        /// <summary>
+        /// Represents the image URLs for a Pokémon card.
+        /// </summary>
         public class Images
         {
+            /// <summary>
+            /// Gets or sets the URL for the small version of the card image.
+            /// </summary>
             public string Small { get; set; }
         }
     }

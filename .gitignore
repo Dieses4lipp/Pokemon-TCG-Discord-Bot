@@ -6,3 +6,7 @@ obj/
 
 # .env Datei
 .env
+
+# Ignore UserCards folder and all JSON files inside it
+/UserCards/
+*.json
