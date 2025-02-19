@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <Folder Include="UserCards\" />
+    <Folder Include="UserCards\" />
   </ItemGroup>
 
 </Project>

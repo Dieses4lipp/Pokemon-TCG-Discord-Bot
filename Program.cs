@@ -3,13 +3,12 @@ using Discord.Commands;
 using Discord.WebSocket;
 using DotNetEnv;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Threading.Tasks;
 
 namespace DiscordBot
 {
     /// <summary>
-    /// The main entry point for the Discord bot, handles bot startup, command registration, and event subscriptions.
+    ///     The main entry point for the Discord bot, handles bot startup, command
+    ///     registration, and event subscriptions.
     /// </summary>
     class Program
     {
@@ -19,7 +18,7 @@ namespace DiscordBot
         private CommandsModule _commandsModule;
 
         /// <summary>
-        /// The main method that starts the bot asynchronously.
+        ///     The main method that starts the bot asynchronously.
         /// </summary>
         /// <param name="args">Command-line arguments.</param>
         static async Task Main(string[] args)
@@ -28,7 +27,8 @@ namespace DiscordBot
         }
 
         /// <summary>
-        /// Starts the bot, loads the environment variables, sets up the bot client, and registers commands.
+        ///     Starts the bot, loads the environment variables, sets up the bot client,
+        ///     and registers commands.
         /// </summary>
         /// <returns>A task that represents the asynchronous operation.</returns>
         public async Task RunBotAsync()
@@ -70,7 +70,6 @@ namespace DiscordBot
             // Retrieve CommandsModule from DI container and register events
             var commandsModule = Services.GetRequiredService<CommandsModule>();
             client.ReactionAdded += commandsModule.HandleReactionAdded;
-            client.ReactionAdded += commandsModule.HandleSetReactionAdded;
             client.UserLeft += commandsModule.HandleUserLeft;
 
             var interactionHandler = Services.GetRequiredService<InteractionHandler>();
