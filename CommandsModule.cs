@@ -25,7 +25,10 @@ namespace DiscordBot
         ///     Stores active set navigation sessions mapped by message ID.
         /// </summary>
         private static readonly Dictionary<ulong, SetSession> ActiveSetSessions = new();
-
+        /// <summary>
+        ///    Indicates whether the bot is active and responding to commands.
+        /// </summary>
+        private static bool BotActive = true;
         /// <summary>
         ///     Maps card rarities to their corresponding probabilities.
         /// </summary>
@@ -38,7 +41,98 @@ namespace DiscordBot
             {"Ultra Rare", 0.07 },
             {"Secret Rare", 0.03 }
         };
+        /// <summary>
+        /// Stores the locked sets to prevent them from being pulled.
+        /// </summary>
+        private static readonly HashSet<string> LockedSets = new();
 
+        /// <summary>
+        ///     Restarts the bot.
+        /// </summary>
+        /// <returns>A task that represents the asynchronous operation.</returns>
+        [Command("restart")]
+        [RequireBotPermission(GuildPermission.Administrator)]
+        public async Task RestartAsync()
+        {
+            if (!BotActive) { 
+                await ReplyAsync("Bot is currently inactive. Use !turnon to activate the bot.");
+                return;
+            }
+            await ReplyAsync("Restarting...");
+            Program.RestartBot();
+            await ReplyAsync("Bot has been restarted.");
+        }
+
+        /// <summary>
+        ///    Turns off the bot to prevent it from responding to commands.
+        /// </summary>
+        /// <returns></returns>
+        [Command("turnon")]
+        [RequireBotPermission(GuildPermission.Administrator)]
+        public async Task TurnOnAsync()
+        {
+            BotActive = true;
+            await ReplyAsync("Bot is now active.");
+        }
+        /// <summary>
+        ///   Turns off the bot to prevent it from responding to commands.
+        /// </summary>
+        /// <returns></returns>
+        [Command("turnoff")]
+        [RequireBotPermission(GuildPermission.Administrator)]
+        public async Task TurnOffAsync()
+        {
+            BotActive = false;
+            await ReplyAsync("Bot is now inactive.");
+        }
+        /// <summary>
+        /// Locks a specific set to prevent it from being pulled.
+        /// </summary>
+        /// <param name="setId">The ID of the set to lock.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
+        [Command("lock")]
+        [RequireUserPermission(GuildPermission.Administrator)]
+        public async Task LockSetAsync(string setId)
+        {
+            if (!BotActive)
+            {
+                await ReplyAsync("The bot is currently inactive and not responding to commands.");
+                return;
+            }
+            if (LockedSets.Contains(setId))
+            {
+                await ReplyAsync($"Set {setId} is already locked.");
+            }
+            else
+            {
+                LockedSets.Add(setId);
+                await ReplyAsync($"Set {setId} has been locked.");
+            }
+        }
+        /// <summary>
+        /// Unlocks a specific set to allow it to be pulled again.
+        /// </summary>
+        /// <param name="setId">The ID of the set to unlock.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
+        [Command("unlock")]
+        [RequireUserPermission(GuildPermission.Administrator)]
+        public async Task UnlockSetAsync(string setId)
+        {
+            if (!BotActive)
+            {
+                await ReplyAsync("The bot is currently inactive and not responding to commands.");
+                return;
+            }
+            if (LockedSets.Contains(setId))
+            {
+                LockedSets.Remove(setId);
+                await ReplyAsync($"Set {setId} has been unlocked.");
+            }
+            else
+            {
+                await ReplyAsync($"Set {setId} is not locked.");
+            }
+        }
         /// <summary>
         ///     Retrieves and displays the current user's saved Pokémon cards.
         ///     The cards are shown in an embed with reactions for navigation.
@@ -47,6 +141,11 @@ namespace DiscordBot
         [Command("mycards")]
         public async Task MyCardsAsync()
         {
+            if (!BotActive)
+            {
+                await ReplyAsync("The bot is currently inactive and not responding to commands.");
+                return;
+            }
             // Load the user's saved card collection from JSON.
             UserCardCollection collection = await CardStorage.LoadUserCardsAsync(Context.User.Id);
             if (collection.Cards == null ||
@@ -83,6 +182,11 @@ namespace DiscordBot
         [Command("pullcard")]
         public async Task PullCardAsync(string setId = null)
         {
+            if (!BotActive)
+            {
+                await ReplyAsync("The bot is currently inactive and not responding to commands.");
+                return;
+            }
             try
             {
                 var cardData = await GetRandomCards(1, setId);
@@ -114,6 +218,16 @@ namespace DiscordBot
         [Command("pullpack")]
         public async Task PullPackAsync(string setId)
         {
+            if (!BotActive)
+            {
+                await ReplyAsync("The bot is currently inactive and not responding to commands.");
+                return;
+            }
+            if (setId != null && LockedSets.Contains(setId))
+            {
+                await ReplyAsync($"Set {setId} is locked and cannot be pulled.");
+                return;
+            }
             try
             {
                 var allCards = await GetRandomCards(100, setId);
@@ -371,6 +485,11 @@ namespace DiscordBot
         [Command("sets")]
         public async Task GetAllSetsAsync()
         {
+            if (!BotActive)
+            {
+                await ReplyAsync("The bot is currently inactive and not responding to commands.");
+                return;
+            }
             try
             {
                 string response = await _httpClient.GetStringAsync(SetsApiUrl);

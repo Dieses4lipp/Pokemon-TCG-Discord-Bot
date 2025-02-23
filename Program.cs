@@ -1,4 +1,5 @@
-﻿using Discord;
+﻿using System.Diagnostics;
+using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using DotNetEnv;
@@ -12,6 +13,7 @@ namespace DiscordBot
     /// </summary>
     class Program
     {
+        private static Process _currentProcess;
         public static CommandService Commands { get; set; }
         public static IServiceProvider Services { get; private set; }
 
@@ -23,9 +25,23 @@ namespace DiscordBot
         /// <param name="args">Command-line arguments.</param>
         static async Task Main(string[] args)
         {
+            _currentProcess = Process.GetCurrentProcess();
             await new Program().RunBotAsync();
         }
-
+        /// <summary>
+        ///    Restarts the bot by starting a new process and killing the current one.
+        /// </summary>
+        public static void RestartBot()
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = _currentProcess.MainModule.FileName,
+                Arguments = string.Join(" ", Environment.GetCommandLineArgs().Skip(1)),
+                UseShellExecute = false
+            };
+            Process.Start(startInfo);
+            _currentProcess.Kill();
+        }
         /// <summary>
         ///     Starts the bot, loads the environment variables, sets up the bot client,
         ///     and registers commands.
