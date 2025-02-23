@@ -13,14 +13,11 @@ namespace DiscordBot
     /// </summary>
     public class UserCardCollection
     {
-        /// <summary>
-        /// Gets or sets the user ID associated with the collection.
-        /// </summary>
         public ulong UserId { get; set; }
-
-        /// <summary>
-        /// Gets or sets the list of cards in the user's collection.
-        /// </summary>
         public List<Card> Cards { get; set; }
+        public int PacksPulled { get; set; }
+        public int CardsTraded { get; set; }
+        public int DifferentCardsSaved => Cards.Select(c => c.Name).Distinct().Count();
+        public Card FavoriteCard { get; set; }
     }
 }

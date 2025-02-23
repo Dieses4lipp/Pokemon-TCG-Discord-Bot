@@ -20,7 +20,7 @@ namespace DiscordBot
         ///     Stores active card navigation sessions mapped by message ID.
         /// </summary>
         public static readonly Dictionary<ulong, PackSession> ActiveSessions = new();
-
+        private static readonly Dictionary<ulong, TradeSession> ActiveTrades = new();
         /// <summary>
         ///     Stores active set navigation sessions mapped by message ID.
         /// </summary>
@@ -45,7 +45,147 @@ namespace DiscordBot
         /// Stores the locked sets to prevent them from being pulled.
         /// </summary>
         private static readonly HashSet<string> LockedSets = new();
+        [Command("help")]
+        public async Task HelpAsync()
+        {
+            if (!BotActive)
+            {
+                await ReplyAsync("The bot is currently inactive and not responding to commands.");
+                return;
+            }
+            EmbedBuilder embed = new EmbedBuilder()
+                .WithTitle("Commands")
+                .WithDescription("The following commands are available:")
+                .AddField("!pullcard [set ID]", "Pulls a random Pokémon card.")
+                .AddField("!pullpack [set ID]", "Pulls a pack of 9 random Pokémon cards.")
+                .AddField("!mycards", "Displays your saved Pokémon cards.")
+                .AddField("!sets", "Displays a list of Pokémon card sets.")
+                .AddField("!unlock [set ID]", "Unlocks a specific set to allow it to be pulled again. (Admin only)")
+                .AddField("!lock [set ID]", "Locks a specific set to prevent it from being pulled. (Admin only)")
+                .AddField("!restart", "Restarts the bot. (Admin only)")
+                .AddField("!turnon", "Turns on the bot to allow it to respond to commands. (Admin only)")
+                .AddField("!turnoff", "Turns off the bot to prevent it from responding to commands. (Admin only)")
+                .WithColor(Color.Blue);
+            await ReplyAsync(embed: embed.Build());
+        }
+        [Command("trade")]
+        public async Task TradeAsync(SocketUser user, int cardIndex)
+        {
+            if (!BotActive)
+            {
+                await ReplyAsync("The bot is currently inactive and not responding to commands.");
+                return;
+            }
 
+            var senderCollection = await CardStorage.LoadUserCardsAsync(Context.User.Id);
+            var receiverCollection = await CardStorage.LoadUserCardsAsync(user.Id);
+
+            if (cardIndex < 1 || cardIndex > senderCollection.Cards.Count)
+            {
+                await ReplyAsync("Invalid card index.");
+                return;
+            }
+
+            var cardToTrade = senderCollection.Cards[cardIndex - 1];
+
+            var tradeSession = new TradeSession(Context.User.Id, user.Id, cardToTrade);
+            ActiveTrades[Context.User.Id] = tradeSession;
+            ActiveTrades[user.Id] = tradeSession;
+
+            await ReplyAsync($"{user.Mention}, {Context.User.Username} wants to trade {cardToTrade.Name} with you. Type !confirmtrade to accept.");
+        }
+
+        [Command("confirmtrade")]
+        public async Task ConfirmTradeAsync()
+        {
+            if (!BotActive)
+            {
+                await ReplyAsync("The bot is currently inactive and not responding to commands.");
+                return;
+            }
+
+            if (!ActiveTrades.ContainsKey(Context.User.Id))
+            {
+                await ReplyAsync("You don't have any pending trades.");
+                return;
+            }
+
+            var tradeSession = ActiveTrades[Context.User.Id];
+            if (tradeSession.ReceiverId != Context.User.Id)
+            {
+                await ReplyAsync("You are not the receiver of this trade.");
+                return;
+            }
+
+            var senderCollection = await CardStorage.LoadUserCardsAsync(tradeSession.SenderId);
+            var receiverCollection = await CardStorage.LoadUserCardsAsync(tradeSession.ReceiverId);
+
+            var cardToRemove = senderCollection.Cards.FirstOrDefault(c => c.Name == tradeSession.CardToTrade.Name);
+            if(cardToRemove != null)
+            {
+                senderCollection.Cards.Remove(cardToRemove);
+            }
+            receiverCollection.Cards.Add(tradeSession.CardToTrade);
+
+            senderCollection.CardsTraded++;
+            receiverCollection.CardsTraded++;
+
+            await CardStorage.SaveUserCardsAsync(senderCollection);
+            await CardStorage.SaveUserCardsAsync(receiverCollection);
+
+            ActiveTrades.Remove(tradeSession.SenderId);
+            ActiveTrades.Remove(tradeSession.ReceiverId);
+
+            await ReplyAsync("Trade completed successfully!");
+        }
+
+        [Command("canceltrade")]
+        public async Task CancelTradeAsync()
+        {
+            if (!BotActive)
+            {
+                await ReplyAsync("The bot is currently inactive and not responding to commands.");
+                return;
+            }
+
+            if (!ActiveTrades.ContainsKey(Context.User.Id))
+            {
+                await ReplyAsync("You don't have any pending trades to cancel.");
+                return;
+            }
+
+            var tradeSession = ActiveTrades[Context.User.Id];
+            ActiveTrades.Remove(tradeSession.SenderId);
+            ActiveTrades.Remove(tradeSession.ReceiverId);
+
+            await ReplyAsync("Trade has been canceled.");
+        }
+        [Command("profile")]
+        public async Task ProfileAsync(SocketUser user)
+        {
+            if (!BotActive)
+            {
+                await ReplyAsync("The bot is currently inactive and not responding to commands.");
+                return;
+            }
+            var collection = await CardStorage.LoadUserCardsAsync(user.Id);
+            EmbedBuilder embed = new EmbedBuilder()
+                .WithTitle($"{user.Username}'s Profile")
+                .AddField("Packs Pulled", collection.PacksPulled)
+                .AddField("Cards Saved", collection.Cards.Count)
+                .AddField("Different Cards Saved", collection.DifferentCardsSaved)
+                .AddField("Cards Traded", collection.CardsTraded)
+                .WithColor(Color.Blue);
+            if (collection.FavoriteCard != null)
+            {
+                embed.AddField("Favorite Card", collection.FavoriteCard.Name).WithImageUrl(collection.FavoriteCard.Images.Small);
+            }else
+            {
+                embed.AddField("Favorite Card", "None");
+            }
+
+            await ReplyAsync(embed: embed.Build());
+        }
         /// <summary>
         ///     Restarts the bot.
         /// </summary>
@@ -62,6 +202,8 @@ namespace DiscordBot
             Program.RestartBot();
             await ReplyAsync("Bot has been restarted.");
         }
+
+
 
         /// <summary>
         ///    Turns off the bot to prevent it from responding to commands.
@@ -171,43 +313,8 @@ namespace DiscordBot
             await message.AddReactionAsync(new Emoji("◀️"));
             await message.AddReactionAsync(new Emoji("▶️"));
             await message.AddReactionAsync(new Emoji("🗑️"));
+            await message.AddReactionAsync(new Emoji("⭐"));
         }
-
-        /// <summary>
-        ///     Pulls a random Pokémon card from the API and displays it in an embed.
-        ///     Optionally, the card can be filtered by a specific set.
-        /// </summary>
-        /// <param name="setId">The optional ID of the set to filter the card pull.</param>
-        /// <returns>A task that represents the asynchronous operation.</returns>
-        [Command("pullcard")]
-        public async Task PullCardAsync(string setId = null)
-        {
-            if (!BotActive)
-            {
-                await ReplyAsync("The bot is currently inactive and not responding to commands.");
-                return;
-            }
-            try
-            {
-                var cardData = await GetRandomCards(1, setId);
-                if (cardData.Count == 0)
-                {
-                    await ReplyAsync(setId == null
-                        ? "No cards found!"
-                        : $"No cards found for set: {setId}!");
-                    return;
-                }
-
-                var card = cardData[0];
-                var embed = BuildCardEmbed(card, 1, 1);
-                await ReplyAsync(embed: embed);
-            }
-            catch (Exception ex)
-            {
-                await ReplyAsync($"An error occurred while retrieving the card: {ex.Message}");
-            }
-        }
-
         /// <summary>
         ///     Pulls a pack of 9 random Pokémon cards from the API (optionally filtered by
         ///     set)
@@ -260,7 +367,10 @@ namespace DiscordBot
 
                 await message.AddReactionAsync(new Emoji("◀️"));
                 await message.AddReactionAsync(new Emoji("▶️"));
-                await message.AddReactionAsync(new Emoji("💾")); // Reaction for saving the card.
+                await message.AddReactionAsync(new Emoji("💾"));
+                var userCollection = await CardStorage.LoadUserCardsAsync(Context.User.Id);
+                userCollection.PacksPulled++;
+                await CardStorage.SaveUserCardsAsync(userCollection);
             }
             catch (Exception ex)
             {
@@ -403,6 +513,14 @@ namespace DiscordBot
                     await channelForMsg.SendMessageAsync(
                         "Card not found in your collection. Did you save a card with the save symbol next to the Card?");
                 }
+            }else if( reaction.Emote.Name == "⭐")
+            {
+                Card favoriteCard = session.Cards[session.CurrentIndex];
+                UserCardCollection collection = await CardStorage.LoadUserCardsAsync(session.UserId);
+                collection.FavoriteCard = favoriteCard;
+                await CardStorage.SaveUserCardsAsync(collection);
+                IMessageChannel? channelForMsg = await channel.GetOrDownloadAsync();
+                await channelForMsg.SendMessageAsync($"Your favorite card has been set to '{favoriteCard.Name}'!");
             }
 
             // Remove the reaction after processing.
@@ -557,7 +675,11 @@ namespace DiscordBot
 
             return Task.CompletedTask;
         }
-
+        public static void ClearTradeSessions()
+        {
+            ActiveTrades.Clear();
+            Console.WriteLine("Trade sessions cleared.");
+        }
         /// <summary>
         ///     Represents a session for navigating through a list of Pokémon card sets.
         /// </summary>
@@ -597,11 +719,11 @@ namespace DiscordBot
                 CurrentIndex = 0;
             }
         }
-
-        /// <summary>
-        ///     Represents a session for navigating through a pack of Pokémon cards.
-        /// </summary>
-        public class PackSession
+        
+            /// <summary>
+            ///     Represents a session for navigating through a pack of Pokémon cards.
+            /// </summary>
+            public class PackSession
         {
             /// <summary>
             ///     Gets the message ID associated with the session.
@@ -690,6 +812,19 @@ namespace DiscordBot
             ///     Gets or sets the URL for the small version of the card image.
             /// </summary>
             public string Small { get; set; }
+        }
+        private class TradeSession
+        {
+            public ulong SenderId { get; }
+            public ulong ReceiverId { get; }
+            public Card CardToTrade { get; }
+
+            public TradeSession(ulong senderId, ulong receiverId, Card cardToTrade)
+            {
+                SenderId = senderId;
+                ReceiverId = receiverId;
+                CardToTrade = cardToTrade;
+            }
         }
     }
 }

@@ -82,7 +82,7 @@ namespace DiscordBot
                 .BuildServiceProvider();
 
             var bot = new Bot(client);
-
+            CommandsModule.ClearTradeSessions();
             // Retrieve CommandsModule from DI container and register events
             var commandsModule = Services.GetRequiredService<CommandsModule>();
             client.ReactionAdded += commandsModule.HandleReactionAdded;
