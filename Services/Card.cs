@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using DiscordBot.Models;
-using static DiscordBot.Commands.CommandsModule;
 
 namespace DiscordBot.Services
 {

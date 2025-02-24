@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 
 namespace DiscordBot.Services
 {
-    using static DiscordBot.Commands.CommandsModule;
 
     /// <summary>
     /// Represents a collection of Pokémon cards for a specific user.

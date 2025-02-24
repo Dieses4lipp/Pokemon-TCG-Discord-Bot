@@ -78,16 +78,14 @@ namespace DiscordBot
             Services = new ServiceCollection()
                 .AddSingleton(client)
                 .AddSingleton(Commands)
-                .AddSingleton<CommandsModule>()
                 .AddSingleton<InteractionHandler>()
                 .BuildServiceProvider();
 
             var bot = new Bot(client);
-            CommandsModule.ClearTradeSessions();
+            CommandHandler.ClearTradeSessions();
             // Retrieve CommandsModule from DI container and register events
-            client.ReactionAdded += CommandsModule.HandleReactionAdded;
-            client.UserLeft += CommandsModule.HandleUserLeft;
-
+            client.ReactionAdded += CommandHandler.HandleReactionAdded;
+            client.UserLeft += CommandHandler.HandleUserLeft;
             client.SelectMenuExecuted += InteractionHandler.HandleSelectMenu;
 
             // Register commands and start the bot
