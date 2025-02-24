@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -23,6 +24,14 @@ namespace DiscordBot.Core
         public static readonly HttpClient _httpClient = new();
         public static readonly string ApiUrl = "https://api.pokemontcg.io/v2/cards";
         public static readonly string SetsApiUrl = "https://api.pokemontcg.io/v2/sets";
+        /// <summary>
+        ///    The number of cards that have been pulled by all users.
+        /// </summary>
+        public static int PullCount { get; set; } = 0;
+        /// <summary>
+        //      The Last took Api Latency.
+        /// </summary>
+        public static long LastApiLatency { get; private set; } = 0;
 
         /// <summary>
         ///     Stores active card navigation sessions mapped by message ID.
@@ -262,7 +271,11 @@ namespace DiscordBot.Core
 
             try
             {
+                var stopwatch = Stopwatch.StartNew();
                 string response = await _httpClient.GetStringAsync(requestUrl);
+                stopwatch.Stop();
+                LastApiLatency = stopwatch.ElapsedMilliseconds;
+                Console.WriteLine($"API Latency: {LastApiLatency}ms");
                 var cardData = JsonConvert.DeserializeObject<ApiResponse>(response);
                 return cardData?.Data?.OrderBy(_ => random.Next()).Take(count).ToList() ?? new List<Card>();
             }

@@ -61,6 +61,7 @@ namespace DiscordBot.Commands
                 await message.AddReactionAsync(new Emoji("💾"));
                 var userCollection = await CardStorage.LoadUserCardsAsync(Context.User.Id);
                 userCollection.PacksPulled++;
+                CommandHandler.PullCount++;
                 await CardStorage.SaveUserCardsAsync(userCollection);
             }
             catch (Exception ex)

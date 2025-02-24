@@ -18,6 +18,7 @@ namespace DiscordBot
         private static Process _currentProcess;
         public static CommandService Commands { get; set; }
         public static IServiceProvider Services { get; private set; }
+        public static DateTime StartTime { get; private set; }
 
 
         /// <summary>
@@ -87,10 +88,12 @@ namespace DiscordBot
             client.ReactionAdded += CommandHandler.HandleReactionAdded;
             client.UserLeft += CommandHandler.HandleUserLeft;
             client.SelectMenuExecuted += InteractionHandler.HandleSelectMenu;
-
+            StartTime = DateTime.UtcNow;
+            Console.WriteLine($"Bot started at: {StartTime}");
             // Register commands and start the bot
             await CommandHandler.RegisterCommandsAsync(Services);
             await bot.StartAsync(botToken);
+            
         }
     }
 }
