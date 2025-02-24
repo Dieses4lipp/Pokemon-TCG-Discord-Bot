@@ -2,7 +2,7 @@
 using Discord.Commands;
 using Discord.WebSocket;
 
-namespace DiscordBot;
+namespace DiscordBot.Core;
 
 /// <summary>
 ///     Represents the bot and handles its initialization and commands.

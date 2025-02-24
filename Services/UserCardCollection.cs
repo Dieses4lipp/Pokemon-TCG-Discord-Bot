@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DiscordBot
+namespace DiscordBot.Services
 {
-    using static global::DiscordBot.CommandsModule;
+    using static DiscordBot.Commands.CommandsModule;
 
     /// <summary>
     /// Represents a collection of Pokémon cards for a specific user.

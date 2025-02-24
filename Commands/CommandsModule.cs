@@ -1,9 +1,11 @@
 ﻿using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
+using DiscordBot.Services;
+using DiscordBot.Models;
 using Newtonsoft.Json;
 
-namespace DiscordBot
+namespace DiscordBot.Commands
 {
     /// <summary>
     ///     Handles Discord commands for interacting with Pokémon cards and sets.
@@ -12,19 +14,19 @@ namespace DiscordBot
     /// </summary>
     public class CommandsModule : ModuleBase<SocketCommandContext>
     {
-        private static readonly HttpClient _httpClient = new HttpClient();
+        private static readonly HttpClient _httpClient = new();
         private static readonly string ApiUrl = "https://api.pokemontcg.io/v2/cards";
         private static readonly string SetsApiUrl = "https://api.pokemontcg.io/v2/sets";
 
         /// <summary>
         ///     Stores active card navigation sessions mapped by message ID.
         /// </summary>
-        public static readonly Dictionary<ulong, PackSession> ActiveSessions = new();
-        private static readonly Dictionary<ulong, TradeSession> ActiveTrades = new();
+        public static readonly Dictionary<ulong, PackSession> ActiveSessions = [];
+        private static readonly Dictionary<ulong, TradeSession> ActiveTrades = [];
         /// <summary>
         ///     Stores active set navigation sessions mapped by message ID.
         /// </summary>
-        private static readonly Dictionary<ulong, SetSession> ActiveSetSessions = new();
+        private static readonly Dictionary<ulong, SetSession> ActiveSetSessions = [];
         /// <summary>
         ///    Indicates whether the bot is active and responding to commands.
         /// </summary>
@@ -44,7 +46,7 @@ namespace DiscordBot
         /// <summary>
         /// Stores the locked sets to prevent them from being pulled.
         /// </summary>
-        private static readonly HashSet<string> LockedSets = new();
+        private static readonly HashSet<string> LockedSets = [];
         [Command("help")]
         public async Task HelpAsync()
         {
@@ -65,6 +67,10 @@ namespace DiscordBot
                 .AddField("!restart", "Restarts the bot. (Admin only)")
                 .AddField("!turnon", "Turns on the bot to allow it to respond to commands. (Admin only)")
                 .AddField("!turnoff", "Turns off the bot to prevent it from responding to commands. (Admin only)")
+                .AddField("!trade [user] [card index]", "Initiates a trade with another user.")
+                .AddField("!confirmtrade", "Confirms a trade with another user.")
+                .AddField("!canceltrade", "Cancels a trade with another user.")
+                .AddField("!profile [user]", "Displays a user's profile.")
                 .WithColor(Color.Blue);
             await ReplyAsync(embed: embed.Build());
         }
@@ -121,7 +127,7 @@ namespace DiscordBot
             var receiverCollection = await CardStorage.LoadUserCardsAsync(tradeSession.ReceiverId);
 
             var cardToRemove = senderCollection.Cards.FirstOrDefault(c => c.Name == tradeSession.CardToTrade.Name);
-            if(cardToRemove != null)
+            if (cardToRemove != null)
             {
                 senderCollection.Cards.Remove(cardToRemove);
             }
@@ -179,7 +185,8 @@ namespace DiscordBot
             if (collection.FavoriteCard != null)
             {
                 embed.AddField("Favorite Card", collection.FavoriteCard.Name).WithImageUrl(collection.FavoriteCard.Images.Small);
-            }else
+            }
+            else
             {
                 embed.AddField("Favorite Card", "None");
             }
@@ -194,7 +201,8 @@ namespace DiscordBot
         [RequireBotPermission(GuildPermission.Administrator)]
         public async Task RestartAsync()
         {
-            if (!BotActive) { 
+            if (!BotActive)
+            {
                 await ReplyAsync("Bot is currently inactive. Use !turnon to activate the bot.");
                 return;
             }
@@ -383,7 +391,7 @@ namespace DiscordBot
         /// </summary>
         /// <param name="random">An instance of the random number generator.</param>
         /// <returns>A string representing the selected rarity.</returns>
-        private string RollRarity(Random random)
+        private static string RollRarity(Random random)
         {
             double roll = random.NextDouble();
             double cumulative = 0.0;
@@ -425,7 +433,7 @@ namespace DiscordBot
         /// <param name="channel">The channel where the message was sent.</param>
         /// <param name="reaction">The reaction that was added.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        public async Task HandleReactionAdded(Cacheable<IUserMessage, ulong> cache, Cacheable<IMessageChannel, ulong> channel, SocketReaction reaction)
+        public static async Task HandleReactionAdded(Cacheable<IUserMessage, ulong> cache, Cacheable<IMessageChannel, ulong> channel, SocketReaction reaction)
         {
             if (reaction.User.Value.IsBot)
             {
@@ -513,7 +521,8 @@ namespace DiscordBot
                     await channelForMsg.SendMessageAsync(
                         "Card not found in your collection. Did you save a card with the save symbol next to the Card?");
                 }
-            }else if( reaction.Emote.Name == "⭐")
+            }
+            else if (reaction.Emote.Name == "⭐")
             {
                 Card favoriteCard = session.Cards[session.CurrentIndex];
                 UserCardCollection collection = await CardStorage.LoadUserCardsAsync(session.UserId);
@@ -561,7 +570,7 @@ namespace DiscordBot
                 return JsonConvert.DeserializeObject<UserCardCollection>(json) ?? new UserCardCollection();
             }
 
-            return new UserCardCollection { UserId = userId, Cards = new List<Card>() };
+            return new UserCardCollection { UserId = userId, Cards = [] };
         }
 
         /// <summary>
@@ -573,7 +582,7 @@ namespace DiscordBot
         /// <returns>
         ///     A task that returns a list of <see cref="Card" /> objects.
         /// </returns>
-        public async Task<List<Card>> GetRandomCards(int count, string setId)
+        public static async Task<List<Card>> GetRandomCards(int count, string setId)
         {
             var random = new Random();
             const int pageSize = 250;
@@ -587,11 +596,11 @@ namespace DiscordBot
             {
                 string response = await _httpClient.GetStringAsync(requestUrl);
                 var cardData = JsonConvert.DeserializeObject<ApiResponse>(response);
-                return cardData?.Data?.OrderBy(_ => random.Next()).Take(count).ToList() ?? new List<Card>();
+                return cardData?.Data?.OrderBy(_ => random.Next()).Take(count).ToList() ?? [];
             }
             catch (Exception)
             {
-                return new List<Card>();
+                return [];
             }
         }
 
@@ -658,7 +667,7 @@ namespace DiscordBot
         /// <param name="guild">The guild from which the user left.</param>
         /// <param name="user">The user who left.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        public Task HandleUserLeft(SocketGuild guild, SocketUser user)
+        public static Task HandleUserLeft(SocketGuild guild, SocketUser user)
         {
             string userFilePath = Path.Combine(CardStorage.UserCardsDirectory,
                 $"{user.Id}.json");
@@ -679,152 +688,6 @@ namespace DiscordBot
         {
             ActiveTrades.Clear();
             Console.WriteLine("Trade sessions cleared.");
-        }
-        /// <summary>
-        ///     Represents a session for navigating through a list of Pokémon card sets.
-        /// </summary>
-        private class SetSession
-        {
-            /// <summary>
-            ///     Gets the message ID associated with the session.
-            /// </summary>
-            public ulong MessageId { get; }
-
-            /// <summary>
-            ///     Gets the user ID of the participant in the session.
-            /// </summary>
-            public ulong UserId { get; }
-
-            /// <summary>
-            ///     Gets the list of sets in the session.
-            /// </summary>
-            public List<Set> Sets { get; }
-
-            /// <summary>
-            ///     Gets or sets the current index of the displayed set.
-            /// </summary>
-            public int CurrentIndex { get; set; }
-
-            /// <summary>
-            ///     Initializes a new instance of the <see cref="SetSession" /> class.
-            /// </summary>
-            /// <param name="messageId">The message ID associated with the session.</param>
-            /// <param name="userId">The user ID of the session participant.</param>
-            /// <param name="sets">The list of sets to navigate.</param>
-            public SetSession(ulong messageId, ulong userId, List<Set> sets)
-            {
-                MessageId = messageId;
-                UserId = userId;
-                Sets = sets;
-                CurrentIndex = 0;
-            }
-        }
-        
-            /// <summary>
-            ///     Represents a session for navigating through a pack of Pokémon cards.
-            /// </summary>
-            public class PackSession
-        {
-            /// <summary>
-            ///     Gets the message ID associated with the session.
-            /// </summary>
-            public ulong MessageId { get; }
-
-            /// <summary>
-            ///     Gets the user ID of the session participant.
-            /// </summary>
-            public ulong UserId { get; }
-
-            /// <summary>
-            ///     Gets the list of cards in the session.
-            /// </summary>
-            public List<Card> Cards { get; }
-
-            /// <summary>
-            ///     Gets or sets the current index of the displayed card.
-            /// </summary>
-            public int CurrentIndex { get; set; }
-
-            /// <summary>
-            ///     Initializes a new instance of the <see cref="PackSession" /> class.
-            /// </summary>
-            /// <param name="messageId">The message ID associated with the session.</param>
-            /// <param name="userId">The user ID of the session participant.</param>
-            /// <param name="cards">The list of cards to navigate.</param>
-            public PackSession(ulong messageId, ulong userId, List<Card> cards)
-            {
-                MessageId = messageId;
-                UserId = userId;
-                Cards = cards;
-                CurrentIndex = 0;
-            }
-        }
-
-        /// <summary>
-        ///     Represents the API response containing a list of Pokémon cards.
-        /// </summary>
-        public class ApiResponse
-        {
-            /// <summary>
-            ///     Gets or sets the list of cards returned from the API.
-            /// </summary>
-            public List<Card> Data { get; set; }
-        }
-
-        /// <summary>
-        ///     Represents the API response containing a list of Pokémon card sets.
-        /// </summary>
-        public class SetApiResponse
-        {
-            /// <summary>
-            ///     Gets or sets the list of sets returned from the API.
-            /// </summary>
-            public List<Set> Data { get; set; }
-        }
-
-        /// <summary>
-        ///     Represents a Pokémon card set.
-        /// </summary>
-        public class Set
-        {
-            /// <summary>
-            ///     Gets or sets the name of the set.
-            /// </summary>
-            public string Name { get; set; }
-
-            /// <summary>
-            ///     Gets or sets the unique identifier for the set.
-            /// </summary>
-            public string Id { get; set; }
-
-            /// <summary>
-            ///     Gets or sets the URL for the set's image.
-            /// </summary>
-            public string ImageUrl { get; set; }
-        }
-
-        /// <summary>
-        ///     Represents the image URLs for a Pokémon card.
-        /// </summary>
-        public class Images
-        {
-            /// <summary>
-            ///     Gets or sets the URL for the small version of the card image.
-            /// </summary>
-            public string Small { get; set; }
-        }
-        private class TradeSession
-        {
-            public ulong SenderId { get; }
-            public ulong ReceiverId { get; }
-            public Card CardToTrade { get; }
-
-            public TradeSession(ulong senderId, ulong receiverId, Card cardToTrade)
-            {
-                SenderId = senderId;
-                ReceiverId = receiverId;
-                CardToTrade = cardToTrade;
-            }
         }
     }
 }

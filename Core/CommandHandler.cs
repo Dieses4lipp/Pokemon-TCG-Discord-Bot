@@ -5,7 +5,7 @@ using System;
 using System.Reflection;
 using System.Threading.Tasks;
 
-namespace DiscordBot
+namespace DiscordBot.Core
 {
     /// <summary>
     /// Handles the registration of commands for the bot.

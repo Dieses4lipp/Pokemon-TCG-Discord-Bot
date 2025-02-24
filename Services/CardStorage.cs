@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
-namespace DiscordBot
+namespace DiscordBot.Services
 {
     /// <summary>
     /// Provides methods to load and save user card collections to JSON files.
@@ -42,7 +42,7 @@ namespace DiscordBot
                 return JsonConvert.DeserializeObject<UserCardCollection>(json) ?? new UserCardCollection();
             }
 
-            return new UserCardCollection { UserId = userId, Cards = new List<Card>() }; // Return an empty collection if file doesn't exist
+            return new UserCardCollection { UserId = userId, Cards = [] }; // Return an empty collection if file doesn't exist
         }
 
         /// <summary>

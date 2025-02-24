@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Discord.WebSocket;
 using Discord;
 
-namespace DiscordBot
+namespace DiscordBot.Core
 {
     /// <summary>
     /// Handles interactions like select menu events from the Discord client.
@@ -32,7 +32,7 @@ namespace DiscordBot
         /// </summary>
         /// <param name="component">The <see cref="SocketMessageComponent"/> associated with the select menu event.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        public async Task HandleSelectMenu(SocketMessageComponent component)
+        public static async Task HandleSelectMenu(SocketMessageComponent component)
         {
             // Handle select menu interaction here
             return;

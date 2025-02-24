@@ -3,9 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static DiscordBot.CommandsModule;
+using DiscordBot.Models;
+using static DiscordBot.Commands.CommandsModule;
 
-namespace DiscordBot
+namespace DiscordBot.Services
 {
     /// <summary>
     /// Represents a Pokémon card with its name, rarity, and images.

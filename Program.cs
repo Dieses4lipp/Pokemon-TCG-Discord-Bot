@@ -2,6 +2,8 @@
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
+using DiscordBot.Commands;
+using DiscordBot.Core;
 using DotNetEnv;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,7 +19,6 @@ namespace DiscordBot
         public static CommandService Commands { get; set; }
         public static IServiceProvider Services { get; private set; }
 
-        private CommandsModule _commandsModule;
 
         /// <summary>
         ///     The main method that starts the bot asynchronously.
@@ -84,12 +85,10 @@ namespace DiscordBot
             var bot = new Bot(client);
             CommandsModule.ClearTradeSessions();
             // Retrieve CommandsModule from DI container and register events
-            var commandsModule = Services.GetRequiredService<CommandsModule>();
-            client.ReactionAdded += commandsModule.HandleReactionAdded;
-            client.UserLeft += commandsModule.HandleUserLeft;
+            client.ReactionAdded += CommandsModule.HandleReactionAdded;
+            client.UserLeft += CommandsModule.HandleUserLeft;
 
-            var interactionHandler = Services.GetRequiredService<InteractionHandler>();
-            client.SelectMenuExecuted += interactionHandler.HandleSelectMenu;
+            client.SelectMenuExecuted += InteractionHandler.HandleSelectMenu;
 
             // Register commands and start the bot
             await CommandHandler.RegisterCommandsAsync(Services);
