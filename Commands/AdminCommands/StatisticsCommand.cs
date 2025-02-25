@@ -9,6 +9,7 @@ namespace DiscordBot.Commands
     public class StatisticsCommand : ModuleBase<SocketCommandContext>
     {
         [Command("stats")]
+        [RequireUserPermission(GuildPermission.Administrator)]
         public async Task StatsAsync()
         {
             if (!CommandHandler.BotActive)

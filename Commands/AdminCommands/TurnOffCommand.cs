@@ -8,7 +8,7 @@ namespace DiscordBot.Commands.AdminCommands
     public class TurnOffCommand : ModuleBase<SocketCommandContext>
     {
         [Command("turnoff")]
-        [RequireBotPermission(GuildPermission.Administrator)]
+        [RequireUserPermission(GuildPermission.Administrator)]
         public async Task TurnOffAsync()
         {
             CommandHandler.BotActive = false;

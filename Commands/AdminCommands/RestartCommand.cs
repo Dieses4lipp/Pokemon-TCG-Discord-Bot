@@ -8,7 +8,7 @@ namespace DiscordBot.Commands.AdminCommands
     public class RestartCommand : ModuleBase<SocketCommandContext>
     {
         [Command("restart")]
-        [RequireBotPermission(GuildPermission.Administrator)]
+        [RequireUserPermission(GuildPermission.Administrator)]
         public async Task RestartAsync()
         {
             if (!CommandHandler.BotActive)

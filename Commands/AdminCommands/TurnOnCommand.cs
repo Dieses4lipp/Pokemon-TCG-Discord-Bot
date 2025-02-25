@@ -8,7 +8,7 @@ namespace DiscordBot.Commands.AdminCommands
     public class TurnOnCommand : ModuleBase<SocketCommandContext>
     {
         [Command("turnon")]
-        [RequireBotPermission(GuildPermission.Administrator)]
+        [RequireUserPermission(GuildPermission.Administrator)]
         public async Task TurnOnAsync()
         {
             CommandHandler.BotActive = true;
