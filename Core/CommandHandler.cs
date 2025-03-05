@@ -1,18 +1,12 @@
-﻿using Discord;
+﻿using System.Diagnostics;
+using System.Reflection;
+using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using DiscordBot.Models;
 using DiscordBot.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Reflection;
-using System.Threading.Tasks;
 
 namespace DiscordBot.Core
 {
@@ -160,6 +154,16 @@ namespace DiscordBot.Core
                 Card cardToSave = session.Cards[session.CurrentIndex];
                 UserCardCollection collection = await CardStorage.LoadUserCardsAsync(session.UserId);
 
+                var cardIdentifier = $"{cardToSave.Name}_{cardToSave.Rarity}";
+                if (session.SavedCardIdentifiers.Contains(cardIdentifier))
+                {
+                    IMessageChannel? msgCHannel = await channel.GetOrDownloadAsync();
+                    await msgCHannel.SendMessageAsync("You already have this card in your collection");
+                    return;
+                }
+
+                session.SavedCardIdentifiers.Add(cardIdentifier);
+
                 if (collection.Cards.Count >= 10)
                 {
                     IMessageChannel? msgChannel = await channel.GetOrDownloadAsync();
@@ -179,6 +183,8 @@ namespace DiscordBot.Core
                 Card cardToDelete = session.Cards[session.CurrentIndex];
                 UserCardCollection collection = await CardStorage.LoadUserCardsAsync(session.UserId);
 
+                var cardIdentifier = $"{cardToDelete.Name}_{cardToDelete.Rarity}";
+                session.SavedCardIdentifiers.Remove(cardIdentifier);
                 int removedCount = collection.Cards.RemoveAll(c => c.Name == cardToDelete.Name && c.Rarity == cardToDelete.Rarity);
                 if (removedCount > 0)
                 {

@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using DiscordBot.Services;
+﻿using DiscordBot.Services;
 
 namespace DiscordBot.Models
 {
@@ -31,6 +26,12 @@ namespace DiscordBot.Models
         ///     Gets or sets the current index of the displayed card.
         /// </summary>
         public int CurrentIndex { get; set; }
+
+        /// <summary>
+        ///     A set of identifiers (for example, a combination of card name and rarity)
+        ///     representing cards in this pack that have already been saved.
+        /// </summary>
+        public HashSet<string> SavedCardIdentifiers { get; set; } = new();
 
         /// <summary>
         ///     Initializes a new instance of the <see cref="PackSession" /> class.
