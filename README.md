@@ -26,7 +26,7 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
 ## Features
 
 - **Pack Pulling:**  
-  Pull a pack of 9 random Pokémon cards using `!pullpack [set ID]`. If no set is specified, cards are pulled from all available sets.
+  Pull a pack of 9 random Pokémon cards using `!pullpack [set ID]`.
   
 - **Collection Management:**  
   View your saved cards with `!mycards` and manage your collection directly in Discord.
