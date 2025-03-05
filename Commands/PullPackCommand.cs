@@ -1,19 +1,15 @@
 ﻿using Discord;
 using Discord.Commands;
-using Discord.WebSocket;
 using DiscordBot.Core;
 using DiscordBot.Models;
 using DiscordBot.Services;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace DiscordBot.Commands
 {
     public class PullPackCommand : ModuleBase<SocketCommandContext>
     {
         [Command("pullpack")]
+        [DailyUsageLimit(10)]
         public async Task PullPackAsync(string setId)
         {
             if (!CommandHandler.BotActive)
