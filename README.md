@@ -61,7 +61,7 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
 1. **Clone the Repository:**
 
    ```bash
-   git clone https://github.com/yourusername/yourrepo.git
+   git clone https://github.com/Dieses4lipp/Pokemon-TCG-Discord-Bot
    cd yourrepo
    ```
 
