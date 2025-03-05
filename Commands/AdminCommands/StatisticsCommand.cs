@@ -1,13 +1,19 @@
 ﻿using Discord;
 using Discord.Commands;
 using DiscordBot.Core;
-using System;
-using System.Threading.Tasks;
 
 namespace DiscordBot.Commands
 {
+    /// <summary>
+    ///     Provides a command to display bot statistics, including uptime and API
+    ///     latency.
+    /// </summary>
     public class StatisticsCommand : ModuleBase<SocketCommandContext>
     {
+        /// <summary>
+        ///     Displays the bot's statistics such as uptime, number of pulls, and API
+        ///     latency.
+        /// </summary>
         [Command("stats")]
         [RequireUserPermission(GuildPermission.Administrator)]
         public async Task StatsAsync()

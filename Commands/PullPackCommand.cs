@@ -6,8 +6,16 @@ using DiscordBot.Services;
 
 namespace DiscordBot.Commands
 {
+    /// <summary>
+    ///     Provides a command to pull a pack of 9 random Pokémon cards from a
+    ///     specified set.
+    /// </summary>
     public class PullPackCommand : ModuleBase<SocketCommandContext>
     {
+        /// <summary>
+        ///     Pulls a pack of 9 random cards from the specified set, considering the
+        ///     locked sets and limits.
+        /// </summary>
         [Command("pullpack")]
         [DailyUsageLimit(10)]
         public async Task PullPackAsync(string setId)

@@ -3,6 +3,9 @@ using Discord.Commands;
 
 namespace DiscordBot.Core
 {
+    /// <summary>
+    ///     A custom attribute to enforce a daily usage limit for commands.
+    /// </summary>
     public class DailyUsageLimitAttribute : PreconditionAttribute
     {
         private readonly int _limit;
@@ -10,11 +13,29 @@ namespace DiscordBot.Core
         // Tracks each user's usage: key is user ID, value is a tuple of (date, count)
         private static readonly ConcurrentDictionary<ulong, (DateTime Date, int Count)> _userUsage = new();
 
+        /// <summary>
+        ///     Initializes a new instance of the <see cref="DailyUsageLimitAttribute" />
+        ///     class.
+        /// </summary>
+        /// <param name="limit">
+        ///     The maximum number of times the command can be used per
+        ///     day.
+        /// </param>
         public DailyUsageLimitAttribute(int limit)
         {
             _limit = limit;
         }
 
+        /// <summary>
+        ///     Checks if the user has exceeded their daily usage limit for a command.
+        /// </summary>
+        /// <param name="context">The command context.</param>
+        /// <param name="command">The command information.</param>
+        /// <param name="services">The service provider.</param>
+        /// <returns>
+        ///     A task representing the asynchronous operation, with a result
+        ///     indicating the precondition check result.
+        /// </returns>
         public override Task<PreconditionResult> CheckPermissionsAsync(ICommandContext context, CommandInfo command,
             IServiceProvider services)
         {
@@ -32,6 +53,7 @@ namespace DiscordBot.Core
                 _userUsage[userId] = usage;
             }
 
+            // If the user has exceeded the limit, return an error
             if (usage.Count >= _limit)
             {
                 return Task.FromResult(

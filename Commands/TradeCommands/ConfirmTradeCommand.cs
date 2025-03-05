@@ -1,14 +1,17 @@
 ﻿using Discord.Commands;
 using DiscordBot.Core;
-using DiscordBot.Models;
 using DiscordBot.Services;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace DiscordBot.Commands.TradeCommands
 {
+    /// <summary>
+    ///     Provides a command to confirm and complete a trade between two users.
+    /// </summary>
     public class ConfirmTradeCommand : ModuleBase<SocketCommandContext>
     {
+        /// <summary>
+        ///     Confirms and completes the trade session if the user is the receiver.
+        /// </summary>
         [Command("confirmtrade")]
         public async Task ConfirmTradeAsync()
         {

@@ -1,30 +1,36 @@
 ﻿using Discord;
 using Discord.Commands;
 using DiscordBot.Core;
-using System.Threading.Tasks;
 
-namespace DiscordBot.Commands.AdminCommands
+namespace DiscordBot.Commands.AdminCommands;
+
+/// <summary>
+///     Provides a command to lock a specific set, preventing further
+///     modifications.
+/// </summary>
+public class LockSetCommand : ModuleBase<SocketCommandContext>
 {
-    public class LockSetCommand : ModuleBase<SocketCommandContext>
+    /// <summary>
+    ///     Locks the specified set if it is not already locked.
+    /// </summary>
+    /// <param name="setId">The identifier of the set to lock.</param>
+    [Command("lock")]
+    [RequireUserPermission(GuildPermission.Administrator)]
+    public async Task LockSetAsync(string setId)
     {
-        [Command("lock")]
-        [RequireUserPermission(GuildPermission.Administrator)]
-        public async Task LockSetAsync(string setId)
+        if (!CommandHandler.BotActive)
         {
-            if (!CommandHandler.BotActive)
-            {
-                await ReplyAsync("The bot is currently inactive and not responding to commands.");
-                return;
-            }
-            if (CommandHandler.LockedSets.Contains(setId))
-            {
-                await ReplyAsync($"Set {setId} is already locked.");
-            }
-            else
-            {
-                CommandHandler.LockedSets.Add(setId);
-                await ReplyAsync($"Set {setId} has been locked.");
-            }
+            await ReplyAsync("The bot is currently inactive and not responding to commands.");
+            return;
+        }
+        if (CommandHandler.LockedSets.Contains(setId))
+        {
+            await ReplyAsync($"Set {setId} is already locked.");
+        }
+        else
+        {
+            CommandHandler.LockedSets.Add(setId);
+            await ReplyAsync($"Set {setId} has been locked.");
         }
     }
 }

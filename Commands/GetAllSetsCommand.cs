@@ -9,8 +9,14 @@ using System.Threading.Tasks;
 
 namespace DiscordBot.Commands
 {
+    /// <summary>
+    /// Provides a command to retrieve and display all available Pokémon sets.
+    /// </summary>
     public class GetAllSetsCommand : ModuleBase<SocketCommandContext>
     {
+        /// <summary>
+        /// Fetches all sets from the API and displays them in a select menu.
+        /// </summary>
         [Command("sets")]
         public async Task GetAllSetsAsync()
         {
@@ -50,12 +56,4 @@ namespace DiscordBot.Commands
                     .WithColor(Color.Green)
                     .Build();
 
-                await ReplyAsync(embed: embed, components: component.Build());
-            }
-            catch (Exception ex)
-            {
-                await ReplyAsync("An error occurred: " + ex.Message);
-            }
-        }
-    }
-}
+                await ReplyAsync(embed: embed,

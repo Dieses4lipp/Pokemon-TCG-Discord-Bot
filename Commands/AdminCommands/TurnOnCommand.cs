@@ -1,18 +1,22 @@
 ﻿using Discord;
 using Discord.Commands;
 using DiscordBot.Core;
-using System.Threading.Tasks;
 
-namespace DiscordBot.Commands.AdminCommands
+namespace DiscordBot.Commands.AdminCommands;
+
+/// <summary>
+///     Provides a command to turn on the bot.
+/// </summary>
+public class TurnOnCommand : ModuleBase<SocketCommandContext>
 {
-    public class TurnOnCommand : ModuleBase<SocketCommandContext>
+    /// <summary>
+    ///     Turns on the bot, making it active.
+    /// </summary>
+    [Command("turnon")]
+    [RequireUserPermission(GuildPermission.Administrator)]
+    public async Task TurnOnAsync()
     {
-        [Command("turnon")]
-        [RequireUserPermission(GuildPermission.Administrator)]
-        public async Task TurnOnAsync()
-        {
-            CommandHandler.BotActive = true;
-            await ReplyAsync("Bot is now active.");
-        }
+        CommandHandler.BotActive = true;
+        await ReplyAsync("Bot is now active.");
     }
 }

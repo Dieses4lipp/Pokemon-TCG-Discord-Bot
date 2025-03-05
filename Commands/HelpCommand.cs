@@ -1,12 +1,19 @@
 ﻿using Discord;
 using Discord.Commands;
 using DiscordBot.Core;
-using System.Threading.Tasks;
 
 namespace DiscordBot.Commands
 {
+    /// <summary>
+    ///     Provides a command to display available bot commands and their
+    ///     descriptions.
+    /// </summary>
     public class HelpCommand : ModuleBase<SocketCommandContext>
     {
+        /// <summary>
+        ///     Displays a help message with a list of available bot commands and their
+        ///     descriptions.
+        /// </summary>
         [Command("help")]
         public async Task HelpAsync()
         {
