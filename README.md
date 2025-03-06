@@ -11,7 +11,7 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
 
 ## Table of Contents
 
-- [Features](#fatures)
+- [Features](#features)
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Usage](#usage)
