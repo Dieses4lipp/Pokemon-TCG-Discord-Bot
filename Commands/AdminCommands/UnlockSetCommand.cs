@@ -12,7 +12,9 @@ public class UnlockSetCommand : ModuleBase<SocketCommandContext>
     /// <summary>
     ///     Unlocks a locked set if it exists.
     /// </summary>
-    /// <param name="setId">The ID of the set to unlock.</param>
+    /// <param name="setId">
+    ///     The ID of the set to unlock.
+    /// </param>
     [Command("unlock")]
     [RequireUserPermission(GuildPermission.Administrator)]
     public async Task UnlockSetAsync(string setId)

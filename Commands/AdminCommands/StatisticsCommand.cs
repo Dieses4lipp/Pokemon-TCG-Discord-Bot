@@ -5,14 +5,12 @@ using DiscordBot.Core;
 namespace DiscordBot.Commands
 {
     /// <summary>
-    ///     Provides a command to display bot statistics, including uptime and API
-    ///     latency.
+    ///     Provides a command to display bot statistics, including uptime and API latency.
     /// </summary>
     public class StatisticsCommand : ModuleBase<SocketCommandContext>
     {
         /// <summary>
-        ///     Displays the bot's statistics such as uptime, number of pulls, and API
-        ///     latency.
+        ///     Displays the bot's statistics such as uptime, number of pulls, and API latency.
         /// </summary>
         [Command("stats")]
         [RequireUserPermission(GuildPermission.Administrator)]

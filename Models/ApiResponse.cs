@@ -15,6 +15,6 @@ namespace DiscordBot.Models
         /// <summary>
         ///     Gets or sets the list of cards returned from the API.
         /// </summary>
-        public List<Card> Data { get; set; }
+        public List<Card> Data { get; set; } = [];
     }
 }

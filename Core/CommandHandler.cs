@@ -11,35 +11,30 @@ using Newtonsoft.Json;
 namespace DiscordBot.Core
 {
     /// <summary>
-    /// Handles the registration of commands for the bot.
+    ///     Handles the registration of commands for the bot.
     /// </summary>
     public static class CommandHandler
     {
         public static readonly HttpClient _httpClient = new();
         public static readonly string ApiUrl = "https://api.pokemontcg.io/v2/cards";
         public static readonly string SetsApiUrl = "https://api.pokemontcg.io/v2/sets";
-        /// <summary>
-        ///    The number of cards that have been pulled by all users.
-        /// </summary>
-        public static int PullCount { get; set; } = 0;
-        /// <summary>
-        //      The Last took Api Latency.
-        /// </summary>
-        public static long LastApiLatency { get; private set; } = 0;
 
         /// <summary>
         ///     Stores active card navigation sessions mapped by message ID.
         /// </summary>
-        public static readonly Dictionary<ulong, PackSession> ActiveSessions = new();
-        public static readonly Dictionary<ulong, TradeSession> ActiveTrades = new();
+        public static readonly Dictionary<ulong, PackSession> ActiveSessions = [];
+
+        /// <summary>
+        ///     Gets a dictionary that contains the currently active trade sessions, indexed by
+        ///     their unique identifiers.
+        /// </summary>
+        public static readonly Dictionary<ulong, TradeSession> ActiveTrades = [];
+
         /// <summary>
         ///     Stores active set navigation sessions mapped by message ID.
         /// </summary>
-        public static readonly Dictionary<ulong, SetSession> ActiveSetSessions = new();
-        /// <summary>
-        ///    Indicates whether the bot is active and responding to commands.
-        /// </summary>
-        public static bool BotActive = true;
+        public static readonly Dictionary<ulong, SetSession> ActiveSetSessions = [];
+
         /// <summary>
         ///     Maps card rarities to their corresponding probabilities.
         /// </summary>
@@ -52,22 +47,42 @@ namespace DiscordBot.Core
             {"Ultra Rare", 0.07 },
             {"Secret Rare", 0.03 }
         };
-        /// <summary>
-        /// Stores the locked sets to prevent them from being pulled.
-        /// </summary>
-        public static readonly HashSet<string> LockedSets = new();
-
 
         /// <summary>
-        /// Registers all commands within the assembly.
+        ///     Stores the locked sets to prevent them from being pulled.
         /// </summary>
-        /// <param name="services">The service provider used to resolve services.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
+        public static readonly HashSet<string> LockedSets = [];
+
+        /// <summary>
+        ///     Indicates whether the bot is active and responding to commands.
+        /// </summary>
+        public static bool BotActive = true;
+
+        /// <summary>
+        ///     The number of cards that have been pulled by all users.
+        /// </summary>
+        public static int PullCount { get; set; } = 0;
+
+        /// <summary>
+        ///     The Last took Api Latency.
+        /// </summary>
+        public static long LastApiLatency { get; private set; } = 0;
+
+        /// <summary>
+        ///     Registers all commands within the assembly.
+        /// </summary>
+        /// <param name="services">
+        ///     The service provider used to resolve services.
+        /// </param>
+        /// <returns>
+        ///     A task representing the asynchronous operation.
+        /// </returns>
         public static async Task RegisterCommandsAsync(IServiceProvider services)
         {
             var commandService = services.GetRequiredService<CommandService>();
             await commandService.AddModulesAsync(Assembly.GetEntryAssembly(), services);
         }
+
         public static void LogActiveTrades()
         {
             Console.WriteLine("Active Trades:");
@@ -76,11 +91,16 @@ namespace DiscordBot.Core
                 Console.WriteLine($"Sender: {trade.Value.SenderId}, Receiver: {trade.Value.ReceiverId}, Card: {trade.Value.CardToTrade.Name}");
             }
         }
+
         /// <summary>
-        /// Determines the rarity of a card based on predefined probabilities.
+        ///     Determines the rarity of a card based on predefined probabilities.
         /// </summary>
-        /// <param name="random">An instance of the random number generator.</param>
-        /// <returns>A string representing the selected rarity.</returns>
+        /// <param name="random">
+        ///     An instance of the random number generator.
+        /// </param>
+        /// <returns>
+        ///     A string representing the selected rarity.
+        /// </returns>
         public static string RollRarity(Random random)
         {
             double roll = random.NextDouble();
@@ -99,12 +119,20 @@ namespace DiscordBot.Core
         }
 
         /// <summary>
-        /// Builds an embed to display a Pokémon card.
+        ///     Builds an embed to display a Pokémon card.
         /// </summary>
-        /// <param name="card">The card to display.</param>
-        /// <param name="current">The current index of the card within a session.</param>
-        /// <param name="total">The total number of cards in the session.</param>
-        /// <returns>An <see cref="Embed" /> representing the card's details.</returns>
+        /// <param name="card">
+        ///     The card to display.
+        /// </param>
+        /// <param name="current">
+        ///     The current index of the card within a session.
+        /// </param>
+        /// <param name="total">
+        ///     The total number of cards in the session.
+        /// </param>
+        /// <returns>
+        ///     An <see cref="Embed"/> representing the card's details.
+        /// </returns>
         public static Embed BuildCardEmbed(Card card, int current, int total)
         {
             return new EmbedBuilder()
@@ -116,12 +144,21 @@ namespace DiscordBot.Core
         }
 
         /// <summary>
-        /// Handles reactions added to a card embed message to navigate or modify the user's card collection.
+        ///     Handles reactions added to a card embed message to navigate or modify the user's
+        ///     card collection.
         /// </summary>
-        /// <param name="cache">The cached user message.</param>
-        /// <param name="channel">The channel where the message was sent.</param>
-        /// <param name="reaction">The reaction that was added.</param>
-        /// <returns>A task that represents the asynchronous operation.</returns>
+        /// <param name="cache">
+        ///     The cached user message.
+        /// </param>
+        /// <param name="channel">
+        ///     The channel where the message was sent.
+        /// </param>
+        /// <param name="reaction">
+        ///     The reaction that was added.
+        /// </param>
+        /// <returns>
+        ///     A task that represents the asynchronous operation.
+        /// </returns>
         public static async Task HandleReactionAdded(Cacheable<IUserMessage, ulong> cache, Cacheable<IMessageChannel, ulong> channel, SocketReaction reaction)
         {
             if (reaction.User.Value.IsBot)
@@ -129,12 +166,11 @@ namespace DiscordBot.Core
                 return;
             }
 
-            if (!ActiveSessions.ContainsKey(reaction.MessageId))
+            if (!ActiveSessions.TryGetValue(reaction.MessageId, out PackSession? session))
             {
                 return;
             }
 
-            var session = ActiveSessions[reaction.MessageId];
             if (reaction.UserId != session.UserId) return;
 
             IUserMessage? message = await cache.GetOrDownloadAsync();
@@ -229,10 +265,14 @@ namespace DiscordBot.Core
         }
 
         /// <summary>
-        /// Saves the specified user's card collection to a JSON file.
+        ///     Saves the specified user's card collection to a JSON file.
         /// </summary>
-        /// <param name="collection">The user card collection to save.</param>
-        /// <returns>A task that represents the asynchronous operation.</returns>
+        /// <param name="collection">
+        ///     The user card collection to save.
+        /// </param>
+        /// <returns>
+        ///     A task that represents the asynchronous operation.
+        /// </returns>
         public static async Task SaveUserCardsAsync(UserCardCollection collection)
         {
             string userFilePath = Path.Combine(CardStorage.UserCardsDirectory, $"{collection.UserId}.json");
@@ -241,11 +281,15 @@ namespace DiscordBot.Core
         }
 
         /// <summary>
-        /// Loads the card collection for the specified user from a JSON file.
-        /// If the file does not exist, returns an empty collection.
+        ///     Loads the card collection for the specified user from a JSON file. If the file does
+        ///     not exist, returns an empty collection.
         /// </summary>
-        /// <param name="userId">The user's ID.</param>
-        /// <returns>A task that returns a <see cref="UserCardCollection" /> representing the user's saved cards.</returns>
+        /// <param name="userId">
+        ///     The user's ID.
+        /// </param>
+        /// <returns>
+        ///     A task that returns a <see cref="UserCardCollection"/> representing the user's saved cards.
+        /// </returns>
         public static async Task<UserCardCollection> LoadUserCardsAsync(ulong userId)
         {
             string userFilePath = Path.Combine(CardStorage.UserCardsDirectory, $"{userId}.json");
@@ -259,12 +303,17 @@ namespace DiscordBot.Core
         }
 
         /// <summary>
-        /// Retrieves a list of random Pokémon cards from the API.
-        /// Optionally filters by set ID.
+        ///     Retrieves a list of random Pokémon cards from the API. Optionally filters by set ID.
         /// </summary>
-        /// <param name="count">The number of cards to retrieve.</param>
-        /// <param name="setId">The set ID to filter cards by (optional).</param>
-        /// <returns>A task that returns a list of <see cref="Card" /> objects.</returns>
+        /// <param name="count">
+        ///     The number of cards to retrieve.
+        /// </param>
+        /// <param name="setId">
+        ///     The set ID to filter cards by (optional).
+        /// </param>
+        /// <returns>
+        ///     A task that returns a list of <see cref="Card"/> objects.
+        /// </returns>
         public static async Task<List<Card>> GetRandomCards(int count, string setId)
         {
             var random = new Random();
@@ -292,11 +341,17 @@ namespace DiscordBot.Core
         }
 
         /// <summary>
-        /// Handles cleanup when a user leaves the guild by deleting their saved card collection.
+        ///     Handles cleanup when a user leaves the guild by deleting their saved card collection.
         /// </summary>
-        /// <param name="guild">The guild from which the user left.</param>
-        /// <param name="user">The user who left.</param>
-        /// <returns>A task that represents the asynchronous operation.</returns>
+        /// <param name="guild">
+        ///     The guild from which the user left.
+        /// </param>
+        /// <param name="user">
+        ///     The user who left.
+        /// </param>
+        /// <returns>
+        ///     A task that represents the asynchronous operation.
+        /// </returns>
         public static Task HandleUserLeft(SocketGuild guild, SocketUser user)
         {
             string userFilePath = Path.Combine(CardStorage.UserCardsDirectory, $"{user.Id}.json");
@@ -314,6 +369,9 @@ namespace DiscordBot.Core
             return Task.CompletedTask;
         }
 
+        /// <summary>
+        ///     Clears the last trade session
+        /// </summary>
         public static void ClearTradeSessions()
         {
             ActiveTrades.Clear();

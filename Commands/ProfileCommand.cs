@@ -12,8 +12,7 @@ namespace DiscordBot.Commands;
 public class ProfileCommand : ModuleBase<SocketCommandContext>
 {
     /// <summary>
-    ///     Displays a user's profile, including stats like packs pulled, cards saved,
-    ///     and favorite card.
+    ///     Displays a user's profile, including stats like packs pulled, cards saved, and favorite card.
     /// </summary>
     [Command("profile")]
     public async Task ProfileAsync(SocketUser user)

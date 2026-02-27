@@ -1,23 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Discord.WebSocket;
-using Discord;
+﻿using Discord.WebSocket;
 
 namespace DiscordBot.Core
 {
     /// <summary>
-    /// Handles interactions like select menu events from the Discord client.
+    ///     Handles interactions like select menu events from the Discord client.
     /// </summary>
     public class InteractionHandler
     {
         private readonly DiscordSocketClient _client;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="InteractionHandler"/> class.
+        ///     Initializes a new instance of the <see cref="InteractionHandler"/> class.
         /// </summary>
-        /// <param name="client">The Discord client instance used for event handling.</param>
+        /// <param name="client">
+        ///     The Discord client instance used for event handling.
+        /// </param>
         public InteractionHandler(DiscordSocketClient client)
         {
             _client = client;
@@ -28,10 +25,14 @@ namespace DiscordBot.Core
         }
 
         /// <summary>
-        /// Handles the Select Menu executed event.
+        ///     Handles the Select Menu executed event.
         /// </summary>
-        /// <param name="component">The <see cref="SocketMessageComponent"/> associated with the select menu event.</param>
-        /// <returns>A task that represents the asynchronous operation.</returns>
+        /// <param name="component">
+        ///     The <see cref="SocketMessageComponent"/> associated with the select menu event.
+        /// </param>
+        /// <returns>
+        ///     A task that represents the asynchronous operation.
+        /// </returns>
         public static async Task HandleSelectMenu(SocketMessageComponent component)
         {
             // Handle select menu interaction here

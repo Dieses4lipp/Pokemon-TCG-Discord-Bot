@@ -12,13 +12,13 @@ namespace DiscordBot.Commands.TradeCommands;
 public class TradeCommand : ModuleBase<SocketCommandContext>
 {
     /// <summary>
-    ///     Initiates a trade between the sender and the target user with the specified
-    ///     card.
+    ///     Initiates a trade between the sender and the target user with the specified card.
     /// </summary>
-    /// <param name="user">The user with whom the trade is to be initiated.</param>
+    /// <param name="user">
+    ///     The user with whom the trade is to be initiated.
+    /// </param>
     /// <param name="cardIndex">
-    ///     The index of the card in the sender's collection to be
-    ///     traded.
+    ///     The index of the card in the sender's collection to be traded.
     /// </param>
     [Command("trade")]
     public async Task TradeAsync(SocketUser user, int cardIndex)

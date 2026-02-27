@@ -7,14 +7,13 @@ using DiscordBot.Services;
 namespace DiscordBot.Commands
 {
     /// <summary>
-    ///     Provides a command to pull a pack of 9 random Pokémon cards from a
-    ///     specified set.
+    ///     Provides a command to pull a pack of 9 random Pokémon cards from a specified set.
     /// </summary>
     public class PullPackCommand : ModuleBase<SocketCommandContext>
     {
         /// <summary>
-        ///     Pulls a pack of 9 random cards from the specified set, considering the
-        ///     locked sets and limits.
+        ///     Pulls a pack of 9 random cards from the specified set, considering the locked sets
+        ///     and limits.
         /// </summary>
         [Command("pullpack")]
         [DailyUsageLimit(10)]
@@ -25,9 +24,9 @@ namespace DiscordBot.Commands
                 await ReplyAsync("The bot is currently inactive and not responding to commands.");
                 return;
             }
-            if (setId != null && CommandHandler.LockedSets.Contains(setId))
+            if (CommandHandler.LockedSets.Contains(setId) || setId == null)
             {
-                await ReplyAsync($"Set {setId} is locked and cannot be pulled.");
+                await ReplyAsync($"Set {setId} is locked and/or cannot be pulled.");
                 return;
             }
             try
@@ -57,8 +56,8 @@ namespace DiscordBot.Commands
                 var embed = CommandHandler.BuildCardEmbed(selectedCardList[0], 1, selectedCardList.Count);
                 var message = await ReplyAsync(embed: embed);
 
-                var session = new PackSession(message.Id, Context.User.Id, selectedCardList);
-                CommandHandler.ActiveSessions[message.Id] = session;
+                CommandHandler.ActiveSessions[message.Id] =
+                    new PackSession(message.Id, Context.User.Id, selectedCardList);
 
                 await message.AddReactionAsync(new Emoji("◀️"));
                 await message.AddReactionAsync(new Emoji("▶️"));

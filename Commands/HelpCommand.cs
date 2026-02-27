@@ -5,14 +5,12 @@ using DiscordBot.Core;
 namespace DiscordBot.Commands
 {
     /// <summary>
-    ///     Provides a command to display available bot commands and their
-    ///     descriptions.
+    ///     Provides a command to display available bot commands and their descriptions.
     /// </summary>
     public class HelpCommand : ModuleBase<SocketCommandContext>
     {
         /// <summary>
-        ///     Displays a help message with a list of available bot commands and their
-        ///     descriptions.
+        ///     Displays a help message with a list of available bot commands and their descriptions.
         /// </summary>
         [Command("help")]
         public async Task HelpAsync()

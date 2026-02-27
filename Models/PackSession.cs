@@ -8,6 +8,26 @@ namespace DiscordBot.Models
     public class PackSession
     {
         /// <summary>
+        ///     Initializes a new instance of the <see cref="PackSession"/> class.
+        /// </summary>
+        /// <param name="messageId">
+        ///     The message ID associated with the session.
+        /// </param>
+        /// <param name="userId">
+        ///     The user ID of the session participant.
+        /// </param>
+        /// <param name="cards">
+        ///     The list of cards to navigate.
+        /// </param>
+        public PackSession(ulong messageId, ulong userId, List<Card> cards)
+        {
+            MessageId = messageId;
+            UserId = userId;
+            Cards = cards;
+            CurrentIndex = 0;
+        }
+
+        /// <summary>
         ///     Gets the message ID associated with the session.
         /// </summary>
         public ulong MessageId { get; }
@@ -31,20 +51,6 @@ namespace DiscordBot.Models
         ///     A set of identifiers (for example, a combination of card name and rarity)
         ///     representing cards in this pack that have already been saved.
         /// </summary>
-        public HashSet<string> SavedCardIdentifiers { get; set; } = new();
-
-        /// <summary>
-        ///     Initializes a new instance of the <see cref="PackSession" /> class.
-        /// </summary>
-        /// <param name="messageId">The message ID associated with the session.</param>
-        /// <param name="userId">The user ID of the session participant.</param>
-        /// <param name="cards">The list of cards to navigate.</param>
-        public PackSession(ulong messageId, ulong userId, List<Card> cards)
-        {
-            MessageId = messageId;
-            UserId = userId;
-            Cards = cards;
-            CurrentIndex = 0;
-        }
+        public HashSet<string> SavedCardIdentifiers { get; set; } = [];
     }
 }

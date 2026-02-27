@@ -12,11 +12,10 @@ public class Bot
     private readonly DiscordSocketClient _client;
 
     /// <summary>
-    ///     Initializes a new instance of the <see cref="Bot" /> class.
+    ///     Initializes a new instance of the <see cref="Bot"/> class.
     /// </summary>
     /// <param name="client">
-    ///     The <see cref="DiscordSocketClient" /> instance used by
-    ///     the bot.
+    ///     The <see cref="DiscordSocketClient"/> instance used by the bot.
     /// </param>
     public Bot(DiscordSocketClient client)
     {
@@ -26,8 +25,12 @@ public class Bot
     /// <summary>
     ///     Starts the bot and logs it in using the provided token.
     /// </summary>
-    /// <param name="botToken">The token used to log in to the bot account.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
+    /// <param name="botToken">
+    ///     The token used to log in to the bot account.
+    /// </param>
+    /// <returns>
+    ///     A task representing the asynchronous operation.
+    /// </returns>
     public async Task StartAsync(string botToken)
     {
         _client.Log += Log;
@@ -43,8 +46,12 @@ public class Bot
     /// <summary>
     ///     Logs messages to the console.
     /// </summary>
-    /// <param name="logMessage">The log message to log.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
+    /// <param name="logMessage">
+    ///     The log message to log.
+    /// </param>
+    /// <returns>
+    ///     A task representing the asynchronous operation.
+    /// </returns>
     private Task Log(LogMessage logMessage)
     {
         Console.WriteLine(logMessage);
@@ -54,7 +61,9 @@ public class Bot
     /// <summary>
     ///     Executes when the bot is ready and connected to Discord.
     /// </summary>
-    /// <returns>A task representing the asynchronous operation.</returns>
+    /// <returns>
+    ///     A task representing the asynchronous operation.
+    /// </returns>
     private Task OnReady()
     {
         Console.WriteLine("Bot is online and ready!");
@@ -62,11 +71,14 @@ public class Bot
     }
 
     /// <summary>
-    ///     Handles incoming messages and executes commands when prefixed with '!'
-    ///     character.
+    ///     Handles incoming messages and executes commands when prefixed with '!' character.
     /// </summary>
-    /// <param name="arg">The incoming <see cref="SocketMessage" /> to handle.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
+    /// <param name="arg">
+    ///     The incoming <see cref="SocketMessage"/> to handle.
+    /// </param>
+    /// <returns>
+    ///     A task representing the asynchronous operation.
+    /// </returns>
     private async Task HandleCommandAsync(SocketMessage arg)
     {
         if (arg is not SocketUserMessage message) return;

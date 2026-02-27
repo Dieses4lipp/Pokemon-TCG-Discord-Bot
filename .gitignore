@@ -1,12 +1,15 @@
-# .gitignore für .NET-Projekte
+# .gitignore for .NET-Projects
 
-# .NET
+# .NET development files
 bin/
 obj/
 
-# .env Datei
+# .env file
 .env
 
-# Ignore UserCards folder and all JSON files inside it
+# UserCards folder and all JSON files inside it
 UserCards/
 *.json
+
+# .vs folder and all contents
+.vs/

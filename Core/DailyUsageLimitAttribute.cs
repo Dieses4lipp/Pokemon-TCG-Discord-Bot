@@ -8,18 +8,16 @@ namespace DiscordBot.Core
     /// </summary>
     public class DailyUsageLimitAttribute : PreconditionAttribute
     {
-        private readonly int _limit;
-
         // Tracks each user's usage: key is user ID, value is a tuple of (date, count)
         private static readonly ConcurrentDictionary<ulong, (DateTime Date, int Count)> _userUsage = new();
 
+        private readonly int _limit;
+
         /// <summary>
-        ///     Initializes a new instance of the <see cref="DailyUsageLimitAttribute" />
-        ///     class.
+        ///     Initializes a new instance of the <see cref="DailyUsageLimitAttribute"/> class.
         /// </summary>
         /// <param name="limit">
-        ///     The maximum number of times the command can be used per
-        ///     day.
+        ///     The maximum number of times the command can be used per day.
         /// </param>
         public DailyUsageLimitAttribute(int limit)
         {
@@ -29,12 +27,18 @@ namespace DiscordBot.Core
         /// <summary>
         ///     Checks if the user has exceeded their daily usage limit for a command.
         /// </summary>
-        /// <param name="context">The command context.</param>
-        /// <param name="command">The command information.</param>
-        /// <param name="services">The service provider.</param>
+        /// <param name="context">
+        ///     The command context.
+        /// </param>
+        /// <param name="command">
+        ///     The command information.
+        /// </param>
+        /// <param name="services">
+        ///     The service provider.
+        /// </param>
         /// <returns>
-        ///     A task representing the asynchronous operation, with a result
-        ///     indicating the precondition check result.
+        ///     A task representing the asynchronous operation, with a result indicating the
+        ///     precondition check result.
         /// </returns>
         public override Task<PreconditionResult> CheckPermissionsAsync(ICommandContext context, CommandInfo command,
             IServiceProvider services)

@@ -1,20 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 
 namespace DiscordBot.Services
 {
     /// <summary>
-    /// Provides methods to load and save user card collections to JSON files.
+    ///     Provides methods to load and save user card collections to JSON files.
     /// </summary>
     public static class CardStorage
     {
         // Directory where the JSON files will be stored
         public static string UserCardsDirectory = Path.Combine(
-            Directory.GetParent(Directory.GetCurrentDirectory()).Parent.Parent.FullName,
+            AppContext.BaseDirectory,
             "UserCards"
         );
 
@@ -28,10 +23,15 @@ namespace DiscordBot.Services
         }
 
         /// <summary>
-        /// Loads a user's card collection from a JSON file.
+        ///     Loads a user's card collection from a JSON file.
         /// </summary>
-        /// <param name="userId">The user ID whose card collection is to be loaded.</param>
-        /// <returns>A task that represents the asynchronous operation. The task result contains the user's card collection.</returns>
+        /// <param name="userId">
+        ///     The user ID whose card collection is to be loaded.
+        /// </param>
+        /// <returns>
+        ///     A task that represents the asynchronous operation. The task result contains the
+        ///     user's card collection.
+        /// </returns>
         public static async Task<UserCardCollection> LoadUserCardsAsync(ulong userId)
         {
             string userFilePath = Path.Combine(UserCardsDirectory, $"{userId}.json");
@@ -46,10 +46,14 @@ namespace DiscordBot.Services
         }
 
         /// <summary>
-        /// Saves a user's card collection to a JSON file.
+        ///     Saves a user's card collection to a JSON file.
         /// </summary>
-        /// <param name="collection">The user's card collection to be saved.</param>
-        /// <returns>A task that represents the asynchronous operation.</returns>
+        /// <param name="collection">
+        ///     The user's card collection to be saved.
+        /// </param>
+        /// <returns>
+        ///     A task that represents the asynchronous operation.
+        /// </returns>
         public static async Task SaveUserCardsAsync(UserCardCollection collection)
         {
             string userFilePath = Path.Combine(UserCardsDirectory, $"{collection.UserId}.json");

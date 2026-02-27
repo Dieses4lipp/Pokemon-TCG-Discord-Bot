@@ -13,7 +13,7 @@ public class UserCardCollection
     /// <summary>
     ///     Gets or sets the list of cards owned by the user.
     /// </summary>
-    public List<Card> Cards { get; set; }
+    public List<Card> Cards { get; set; } = [];
 
     /// <summary>
     ///     Gets or sets the number of packs the user has pulled.
@@ -33,5 +33,5 @@ public class UserCardCollection
     /// <summary>
     ///     Gets or sets the user's favorite card, if any.
     /// </summary>
-    public Card FavoriteCard { get; set; }
+    public Card FavoriteCard { get; set; } = default!;
 }

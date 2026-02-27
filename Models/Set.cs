@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace DiscordBot.Models
+﻿namespace DiscordBot.Models
 {
     /// <summary>
     ///     Represents a Pokémon card set.
@@ -14,16 +8,16 @@ namespace DiscordBot.Models
         /// <summary>
         ///     Gets or sets the name of the set.
         /// </summary>
-        public string Name { get; set; }
+        public string Name { get; set; } = default!;
 
         /// <summary>
         ///     Gets or sets the unique identifier for the set.
         /// </summary>
-        public string Id { get; set; }
+        public string Id { get; set; } = default!;
 
         /// <summary>
         ///     Gets or sets the URL for the set's image.
         /// </summary>
-        public string ImageUrl { get; set; }
+        public string ImageUrl { get; set; } = default!;
     }
 }
