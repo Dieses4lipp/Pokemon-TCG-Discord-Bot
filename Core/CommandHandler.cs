@@ -7,6 +7,7 @@ using DiscordBot.Models;
 using DiscordBot.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace DiscordBot.Core
 {
@@ -16,8 +17,8 @@ namespace DiscordBot.Core
     public static class CommandHandler
     {
         public static readonly HttpClient _httpClient = new();
-        public static readonly string ApiUrl = "https://api.pokemontcg.io/v2/cards";
-        public static readonly string SetsApiUrl = "https://api.pokemontcg.io/v2/sets";
+        public static readonly string ApiUrl = "https://api.tcgdex.net/v2/en/cards";
+        public static readonly string SetsApiUrl = "https://api.tcgdex.net/v2/en/sets";
 
         /// <summary>
         ///     Stores active card navigation sessions mapped by message ID.
@@ -317,12 +318,7 @@ namespace DiscordBot.Core
         public static async Task<List<Card>> GetRandomCards(int count, string setId)
         {
             var random = new Random();
-            const int pageSize = 250;
-            int randomPage = random.Next(1, 10);
-
-            string requestUrl = setId == null
-                ? $"{ApiUrl}?page={randomPage}&pageSize={pageSize}"
-                : $"{ApiUrl}?q=set.id%3A{setId}&pageSize={pageSize}";
+            string requestUrl = string.IsNullOrEmpty(setId) ? ApiUrl : $"{SetsApiUrl}/{setId}";
 
             try
             {
@@ -331,15 +327,107 @@ namespace DiscordBot.Core
                 stopwatch.Stop();
                 LastApiLatency = stopwatch.ElapsedMilliseconds;
                 Console.WriteLine($"API Latency: {LastApiLatency}ms");
-                var cardData = JsonConvert.DeserializeObject<ApiResponse>(response);
-                return cardData?.Data?.OrderBy(_ => random.Next()).Take(count).ToList() ?? new List<Card>();
+
+                // Parse into JToken and try to locate an array of card briefs/ids
+                var token = JToken.Parse(response);
+
+                // Helper: find candidate array containing card objects or ids
+                JArray? cardArray = token.Type == JTokenType.Array ? (JArray)token : null;
+                if (cardArray == null)
+                {
+                    // common wrappers: data, cards, sets
+                    var candidates = new[] { "data", "cards", "results", "items", "sets" };
+                    foreach (var name in candidates)
+                    {
+                        var candidate = token[name];
+                        if (candidate != null && candidate.Type == JTokenType.Array)
+                        {
+                            cardArray = (JArray)candidate;
+                            break;
+                        }
+                    }
+                }
+
+                // If we still don't have an array and the response is an object with many properties,
+                // try to find the first array property
+                if (cardArray == null && token.Type == JTokenType.Object)
+                {
+                    var firstArray = ((JObject)token).Properties().FirstOrDefault(p => p.Value.Type == JTokenType.Array);
+                    if (firstArray != null) cardArray = (JArray)firstArray.Value;
+                }
+
+                if (cardArray == null)
+                {
+                    Console.WriteLine("No card array found in API response.");
+                    return new List<Card>();
+                }
+
+                // Map array items to card briefs (extract id field)
+                var cardIds = cardArray
+                    .Select(item =>
+                    {
+                        // item might be string id, or object with id property
+                        if (item.Type == JTokenType.String) return (string?)item.Value<string>();
+                        var idToken = item["id"] ?? item["cardId"] ?? item["uuid"];
+                        return idToken?.Value<string>();
+                    })
+                    .Where(id => !string.IsNullOrEmpty(id))
+                    .Select(id => id!)
+                    .ToList();
+
+                if (cardIds.Count == 0)
+                {
+                    Console.WriteLine("No card ids found in card array.");
+                    return new List<Card>();
+                }
+
+                // Randomly pick up to 'count' ids
+                var selectedIds = cardIds.OrderBy(_ => random.Next()).Take(count).ToList();
+
+                var fullCards = new List<Card>();
+                foreach (var id in selectedIds)
+                {
+                    try
+                    {
+                        // Fetch detailed card. Some APIs return an object wrapper; handle both.
+                        var detailedResponse = await _httpClient.GetStringAsync($"{ApiUrl}/{id}");
+                        var detailToken = JToken.Parse(detailedResponse);
+
+                        // find inner object with id/name/images or fall back to top-level
+                        JToken? cardToken = null;
+                        if (detailToken.Type == JTokenType.Object)
+                        {
+                            cardToken = detailToken["data"] ?? detailToken["card"] ?? detailToken;
+                        }
+                        else if (detailToken.Type == JTokenType.Array)
+                        {
+                            cardToken = detailToken.First;
+                        }
+
+                        if (cardToken == null)
+                        {
+                            continue;
+                        }
+
+                        // Deserialize into your Card model
+                        var detailedCard = cardToken.ToObject<Card>();
+                        if (detailedCard != null) fullCards.Add(detailedCard);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Failed to fetch detailed card {id}: {ex.Message}");
+                    }
+                }
+
+                return fullCards;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to get random cards, ", ex.Message);
-                return [];
+                Console.WriteLine($"Failed to get random cards: {ex.Message}");
+                return new List<Card>();
             }
         }
+
 
         /// <summary>
         ///     Handles cleanup when a user leaves the guild by deleting their saved card collection.
