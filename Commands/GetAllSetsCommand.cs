@@ -24,6 +24,8 @@ public class GetAllSetsCommand : ModuleBase<SocketCommandContext>
         }
         try
         {
+            var message = await ReplyAsync("⏳ Fetching sets, please wait...");
+
             string response = await CommandHandler._httpClient.GetStringAsync(CommandHandler.SetsApiUrl);
             var setData = JsonConvert.DeserializeObject<SetApiResponse>(response);
 
@@ -49,11 +51,18 @@ public class GetAllSetsCommand : ModuleBase<SocketCommandContext>
 
             Embed? embed = new EmbedBuilder()
                 .WithTitle("Pokémon Karten Sets")
-                .WithDescription("The Sets shown - This is no selection, its just for Information to retrieve the Set IDs")
+                .WithDescription("⚠️ The Sets shown - This is no selection, its just for Information to retrieve the Set IDs")
                 .WithColor(Color.Green)
                 .Build();
 
             await ReplyAsync(embed: embed, components: component.Build());
+
+            await message.ModifyAsync(msg =>
+            {
+                msg.Embed = embed;
+                msg.Content = "✅ Sets fetched successfully! Please select a set from the menu below.";
+                msg.Components = component.Build();
+            });
         }
         catch (Exception ex)
         {
