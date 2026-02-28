@@ -19,7 +19,7 @@ public class GetAllSetsCommand : ModuleBase<SocketCommandContext>
     {
         if (!CommandHandler.BotActive)
         {
-            await ReplyAsync("The bot is currently inactive and not responding to commands.");
+            await ReplyAsync("💤 Bot is currently inactive. Use '!turnon' to activate the bot.");
             return;
         }
         try
@@ -29,7 +29,7 @@ public class GetAllSetsCommand : ModuleBase<SocketCommandContext>
 
             if (setData?.Data == null || setData.Data.Count == 0)
             {
-                await ReplyAsync("No sets found!");
+                await ReplyAsync("❌ No sets found!");
                 return;
             }
 
@@ -57,7 +57,7 @@ public class GetAllSetsCommand : ModuleBase<SocketCommandContext>
         }
         catch (Exception ex)
         {
-            await ReplyAsync($"An error occurred while fetching sets, {ex.Message}");
+            await ReplyAsync($"⚠️ An error occurred while fetching sets, {ex.Message}");
         }
     }
 }

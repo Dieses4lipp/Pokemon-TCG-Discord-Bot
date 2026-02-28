@@ -19,7 +19,7 @@ public class ProfileCommand : ModuleBase<SocketCommandContext>
     {
         if (!CommandHandler.BotActive)
         {
-            await ReplyAsync("The bot is currently inactive and not responding to commands.");
+            await ReplyAsync("💤 Bot is currently inactive. Use '!turnon' to activate the bot.");
             return;
         }
         var collection = await CardStorage.LoadUserCardsAsync(user.Id);
@@ -32,7 +32,7 @@ public class ProfileCommand : ModuleBase<SocketCommandContext>
             .WithColor(Color.Blue);
         if (collection.FavoriteCard != null)
         {
-            embed.AddField("Favorite Card", collection.FavoriteCard.Name).WithImageUrl(collection.FavoriteCard.Images.Small);
+            embed.AddField("⭐Favorite Card⭐", collection.FavoriteCard.Name).WithImageUrl(collection.FavoriteCard.Images.Small);
         }
         else
         {

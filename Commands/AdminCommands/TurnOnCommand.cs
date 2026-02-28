@@ -17,6 +17,6 @@ public class TurnOnCommand : ModuleBase<SocketCommandContext>
     public async Task TurnOnAsync()
     {
         CommandHandler.BotActive = true;
-        await ReplyAsync("Bot is now active.");
+        await ReplyAsync("🔌 Bot is now active.");
     }
 }

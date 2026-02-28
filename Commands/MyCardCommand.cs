@@ -19,7 +19,7 @@ public class MyCardsCommand : ModuleBase<SocketCommandContext>
     {
         if (!CommandHandler.BotActive)
         {
-            await ReplyAsync("The bot is currently inactive and not responding to commands.");
+            await ReplyAsync("💤 Bot is currently inactive. Use '!turnon' to activate the bot.");
             return;
         }
         // Load the user's saved card collection from JSON.

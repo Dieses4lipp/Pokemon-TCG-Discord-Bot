@@ -20,12 +20,12 @@ public class PullPackCommand : ModuleBase<SocketCommandContext>
     {
         if (!CommandHandler.BotActive)
         {
-            await ReplyAsync("The bot is currently inactive and not responding to commands.");
+            await ReplyAsync("💤 Bot is currently inactive. Use '!turnon' to activate the bot.");
             return;
         }
         if (CommandHandler.LockedSets.Contains(setId) || setId == null)
         {
-            await ReplyAsync($"Set {setId} is locked and/or cannot be pulled.");
+            await ReplyAsync($"🔒 Set {setId} is locked and/or cannot be pulled.");
             return;
         }
         try
@@ -33,7 +33,7 @@ public class PullPackCommand : ModuleBase<SocketCommandContext>
             var allCards = await CommandHandler.GetRandomCards(100, setId);
             if (allCards.Count == 0)
             {
-                await ReplyAsync($"No cards found for set: {setId}!");
+                await ReplyAsync($"❌ No cards found for set: {setId}!");
                 return;
             }
 
@@ -68,7 +68,7 @@ public class PullPackCommand : ModuleBase<SocketCommandContext>
         }
         catch (Exception ex)
         {
-            await ReplyAsync($"An error occurred while retrieving the pack: {ex.Message}");
+            await ReplyAsync($"⚠️ An error occurred while retrieving the pack: {ex.Message}");
         }
     }
 }

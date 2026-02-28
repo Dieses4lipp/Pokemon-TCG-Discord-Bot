@@ -17,6 +17,6 @@ public class TurnOffCommand : ModuleBase<SocketCommandContext>
     public async Task TurnOffAsync()
     {
         CommandHandler.BotActive = false;
-        await ReplyAsync("Bot is now inactive.");
+        await ReplyAsync("💤 Bot is now inactive.");
     }
 }

@@ -210,7 +210,7 @@ public static class CommandHandler
             await CardStorage.SaveUserCardsAsync(collection);
 
             IMessageChannel? channelForMsg = await channel.GetOrDownloadAsync();
-            await channelForMsg.SendMessageAsync($"Card '{cardToSave.Name}' has been saved to your collection!");
+            await channelForMsg.SendMessageAsync($"✅ Card '{cardToSave.Name}' has been saved to your collection!");
         }
         else if (reaction.Emote.Name == "🗑️")
         {
@@ -241,12 +241,12 @@ public static class CommandHandler
                 await message.ModifyAsync(m => m.Embed = BuildCardEmbed(session.Cards[session.CurrentIndex], session.CurrentIndex + 1, session.Cards.Count));
 
                 IMessageChannel? channelForMsg = await channel.GetOrDownloadAsync();
-                await channelForMsg.SendMessageAsync($"Card '{cardToDelete.Name}' has been removed from your collection!");
+                await channelForMsg.SendMessageAsync($"✅ Card '{cardToDelete.Name}' has been removed from your collection!");
             }
             else
             {
                 IMessageChannel? channelForMsg = await channel.GetOrDownloadAsync();
-                await channelForMsg.SendMessageAsync("Card not found in your collection. Did you save a card with the save symbol next to the Card?");
+                await channelForMsg.SendMessageAsync("⚠️ Card not found in your collection. Did you save a card with the save symbol next to the Card?");
             }
         }
         else if (reaction.Emote.Name == "⭐")
@@ -256,7 +256,7 @@ public static class CommandHandler
             collection.FavoriteCard = favoriteCard;
             await CardStorage.SaveUserCardsAsync(collection);
             IMessageChannel? channelForMsg = await channel.GetOrDownloadAsync();
-            await channelForMsg.SendMessageAsync($"Your favorite card has been set to '{favoriteCard.Name}'!");
+            await channelForMsg.SendMessageAsync($"✅ Your favorite card has been set to '{favoriteCard.Name}'!");
         }
 
         // Remove the reaction after processing.
@@ -335,7 +335,7 @@ public static class CommandHandler
         }
         catch (Exception ex)
         {
-            Console.WriteLine("Failed to get random cards, ", ex.Message);
+            Console.WriteLine($"Failed to get random cards: {ex.Message}");
             return [];
         }
     }

@@ -21,7 +21,7 @@ public class LockSetCommand : ModuleBase<SocketCommandContext>
     {
         if (!CommandHandler.BotActive)
         {
-            await ReplyAsync("The bot is currently inactive and not responding to commands.");
+            await ReplyAsync("💤 Bot is currently inactive. Use '!turnon' to activate the bot.");
             return;
         }
         if (!CommandHandler.LockedSets.Contains(setId))
