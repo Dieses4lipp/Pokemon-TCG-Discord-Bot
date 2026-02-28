@@ -18,11 +18,11 @@ public class RestartCommand : ModuleBase<SocketCommandContext>
     {
         if (!CommandHandler.BotActive)
         {
-            await ReplyAsync("Bot is currently inactive. Use !turnon to activate the bot.");
+            await ReplyAsync("💤 Bot is currently inactive. Use '!turnon' to activate the bot.");
             return;
         }
-        await ReplyAsync("Restarting...");
+        await ReplyAsync("🔄 Restarting...");
         Program.RestartBot();
-        await ReplyAsync("Bot has been restarted.");
+        await ReplyAsync("✅ Bot has been restarted.");
     }
 }

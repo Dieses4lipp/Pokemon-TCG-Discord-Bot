@@ -2,7 +2,6 @@
 using Discord.Commands;
 using Discord.WebSocket;
 using DiscordBot.Core;
-using DiscordBot.Services;
 
 namespace DiscordBot.Commands;
 
@@ -12,15 +11,14 @@ namespace DiscordBot.Commands;
 public class ProfileCommand : ModuleBase<SocketCommandContext>
 {
     /// <summary>
-    ///     Displays a user's profile, including stats like packs pulled, cards saved,
-    ///     and favorite card.
+    ///     Displays a user's profile, including stats like packs pulled, cards saved, and favorite card.
     /// </summary>
     [Command("profile")]
     public async Task ProfileAsync(SocketUser user)
     {
         if (!CommandHandler.BotActive)
         {
-            await ReplyAsync("The bot is currently inactive and not responding to commands.");
+            await ReplyAsync("💤 Bot is currently inactive. Use '!turnon' to activate the bot.");
             return;
         }
         var collection = await CardStorage.LoadUserCardsAsync(user.Id);
@@ -33,7 +31,7 @@ public class ProfileCommand : ModuleBase<SocketCommandContext>
             .WithColor(Color.Blue);
         if (collection.FavoriteCard != null)
         {
-            embed.AddField("Favorite Card", collection.FavoriteCard.Name).WithImageUrl(collection.FavoriteCard.Images.Small);
+            embed.AddField("⭐Favorite Card⭐", collection.FavoriteCard.Name).WithImageUrl($"{collection.FavoriteCard.Image}/low.png");
         }
         else
         {

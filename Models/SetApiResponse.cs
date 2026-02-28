@@ -1,19 +1,25 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Newtonsoft.Json;
 
 namespace DiscordBot.Models
 {
-    /// <summary>
-    ///     Represents the API response containing a list of Pokémon card sets.
-    /// </summary>
     public class SetApiResponse
     {
-        /// <summary>
-        ///     Gets or sets the list of sets returned from the API.
-        /// </summary>
-        public List<Set> Data { get; set; }
+        [JsonProperty("id")]
+        public string Id { get; set; } = default!;
+
+        [JsonProperty("name")]
+        public string Name { get; set; } = default!;
+
+        [JsonProperty("logo")]
+        public string ImageUrl { get; set; } = default!;
+
+        [JsonProperty("cardCount")]
+        public SetCardCount CardCount { get; set; } = new();
+    }
+
+    public class SetCardCount
+    {
+        [JsonProperty("total")]
+        public int Total { get; set; }
     }
 }
