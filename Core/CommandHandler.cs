@@ -299,7 +299,7 @@ namespace DiscordBot.Core
                 return JsonConvert.DeserializeObject<UserCardCollection>(json) ?? new UserCardCollection();
             }
 
-            return new UserCardCollection { UserId = userId, Cards = new List<Card>() };
+            return new UserCardCollection { UserId = userId, Cards = [] };
         }
 
         /// <summary>
@@ -334,9 +334,10 @@ namespace DiscordBot.Core
                 var cardData = JsonConvert.DeserializeObject<ApiResponse>(response);
                 return cardData?.Data?.OrderBy(_ => random.Next()).Take(count).ToList() ?? new List<Card>();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return new List<Card>();
+                Console.WriteLine($"Failed to get random cards, ", ex.Message);
+                return [];
             }
         }
 

@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
@@ -70,7 +71,9 @@ namespace DiscordBot
                 GatewayIntents = GatewayIntents.Guilds |
                                  GatewayIntents.GuildMessages |
                                  GatewayIntents.MessageContent |
-                                 GatewayIntents.GuildMessageReactions
+                                 GatewayIntents.GuildMessageReactions,
+                HandlerTimeout = null,
+                ConnectionTimeout = 30000,
             };
 
             var client = new DiscordSocketClient(config);
@@ -95,47 +98,15 @@ namespace DiscordBot
                 _ = Task.Run(async () => await CommandHandler.HandleReactionAdded(cache, channel, reaction));
                 return Task.CompletedTask;
             };
-            client.MessageReceived += HandleCommandAsync;
             client.UserLeft += CommandHandler.HandleUserLeft;
             client.SelectMenuExecuted += InteractionHandler.HandleSelectMenu;
-            StartTime = DateTime.UtcNow;
-            Console.WriteLine($"Bot started at: {StartTime}");
             // Register commands and start the bot
             await CommandHandler.RegisterCommandsAsync(Services);
             await bot.StartAsync(botToken);
-        }
-
-        /// <summary>
-        ///     Processes an incoming Discord message and executes a command asynchronously if the
-        ///     message contains a valid command prefix.
-        /// </summary>
-        /// <param name="arg">
-        ///     The message received from the Discord socket to be evaluated for command execution.
-        /// </param>
-        /// <returns>
-        ///     A task that represents the asynchronous operation of handling the command message.
-        /// </returns>
-        private static async Task HandleCommandAsync(SocketMessage arg)
-        {
-            // Ignore system messages or messages from other bots
-            if (arg is not SocketUserMessage message || message.Author.IsBot) return;
-
-            int argPos = 0;
-
-            if (message.HasStringPrefix("!", ref argPos))
-            {
-                var context = new SocketCommandContext(Services.GetRequiredService<DiscordSocketClient>(), message);
-
-                // Execute the command in a background thread (non-blocking)
-                _ = Task.Run(async () =>
-                {
-                    var result = await Commands.ExecuteAsync(context, argPos, Services);
-                    if (!result.IsSuccess)
-                    {
-                        Console.WriteLine($"Error: {result.ErrorReason}");
-                    }
-                });
-            }
+            // Log the bot's start time and keep the application running
+            StartTime = DateTime.UtcNow;
+            Console.WriteLine($"Bot started at: {StartTime}");
+            await Task.Delay(-1);
         }
 
         /// <summary>

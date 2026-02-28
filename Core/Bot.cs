@@ -40,7 +40,45 @@ public class Bot
         Console.WriteLine("Starting bot...");
         await _client.LoginAsync(TokenType.Bot, botToken);
         await _client.StartAsync();
-        await Task.Delay(-1);
+    }
+
+    /// <summary>
+    ///     Handles incoming messages and executes commands when prefixed with '!' character.
+    /// </summary>
+    /// <param name="arg">
+    ///     The incoming <see cref="SocketMessage"/> to handle.
+    /// </param>
+    /// <returns>
+    ///     A task representing the asynchronous operation.
+    /// </returns>
+    public async Task HandleCommandAsync(SocketMessage arg)
+    {
+        if (arg is not SocketUserMessage message) return;
+        if (message.Author.IsBot) return;
+
+        Console.WriteLine($"Received message: '{message.Content}'");
+
+        int argPos = 0;
+        if (message.HasCharPrefix('!', ref argPos))
+        {
+            _ = Task.Run(async () =>
+            {
+                var context = new SocketCommandContext(_client, message);
+                var result = await Program.Commands.ExecuteAsync(context, argPos, Program.Services);
+
+                if (!result.IsSuccess)
+                {
+                    Console.WriteLine($"Error: {result.ErrorReason}");
+                    await context.Channel.SendMessageAsync($"❌ Error: {result.ErrorReason}");
+                    return;
+                }
+                Console.WriteLine("Command handled successfully!");
+            });
+        }
+        else
+        {
+            Console.WriteLine("Message did not have '!' prefix.");
+        }
     }
 
     /// <summary>
@@ -68,43 +106,5 @@ public class Bot
     {
         Console.WriteLine("Bot is online and ready!");
         return Task.CompletedTask;
-    }
-
-    /// <summary>
-    ///     Handles incoming messages and executes commands when prefixed with '!' character.
-    /// </summary>
-    /// <param name="arg">
-    ///     The incoming <see cref="SocketMessage"/> to handle.
-    /// </param>
-    /// <returns>
-    ///     A task representing the asynchronous operation.
-    /// </returns>
-    private async Task HandleCommandAsync(SocketMessage arg)
-    {
-        if (arg is not SocketUserMessage message) return;
-        if (message.Author.IsBot) return;
-
-        Console.WriteLine($"Received message: '{message.Content}'");
-
-        int argPos = 0;
-        if (message.HasCharPrefix('!', ref argPos))
-        {
-            var context = new SocketCommandContext(_client, message);
-            var result = await Program.Commands.ExecuteAsync(context, argPos, Program.Services);
-
-            if (!result.IsSuccess)
-            {
-                Console.WriteLine($"Error: {result.ErrorReason}");
-                await context.Channel.SendMessageAsync($"❌ Error: {result.ErrorReason}");
-            }
-            else
-            {
-                Console.WriteLine($"Command executed successfully: {message.Content}");
-            }
-        }
-        else
-        {
-            Console.WriteLine("Message did not have '!' prefix.");
-        }
     }
 }
