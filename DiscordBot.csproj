@@ -8,6 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="UserCards\**" />
+    <EmbeddedResource Remove="UserCards\**" />
+    <None Remove="UserCards\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Discord.Net.Commands" Version="3.17.1" />
     <PackageReference Include="Discord.Net.Core" Version="3.17.1" />
     <PackageReference Include="Discord.Net.WebSocket" Version="3.17.1" />
@@ -22,11 +28,6 @@
     <None Update=".env">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="UserCards\" />
-    <Folder Include="UserCards\" />
   </ItemGroup>
 
 </Project>

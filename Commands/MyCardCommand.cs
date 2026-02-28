@@ -2,7 +2,6 @@
 using Discord.Commands;
 using DiscordBot.Core;
 using DiscordBot.Models;
-using DiscordBot.Services;
 
 namespace DiscordBot.Commands;
 

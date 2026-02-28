@@ -4,7 +4,6 @@ using Discord;
 using Discord.Commands;
 using Discord.WebSocket;
 using DiscordBot.Models;
-using DiscordBot.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -182,6 +181,7 @@ public static class CommandHandler
                 ? (session.CurrentIndex + 1) % session.Cards.Count
                 : (session.CurrentIndex - 1 + session.Cards.Count) % session.Cards.Count;
 
+            // Update the embed to show the new card.
             await message.ModifyAsync(m => m.Embed = BuildCardEmbed(session.Cards[session.CurrentIndex], session.CurrentIndex + 1, session.Cards.Count));
         }
         else if (reaction.Emote.Name == "💾")
@@ -260,8 +260,15 @@ public static class CommandHandler
             await channelForMsg.SendMessageAsync($"Your favorite card has been set to '{favoriteCard.Name}'!");
         }
 
-        // Remove the reaction after processing.
-        await message.RemoveReactionAsync(reaction.Emote, reaction.User.Value);
+        // Remove the reaction after processing. Needs permission to manage reagtions
+        try
+        {
+            await message.RemoveReactionAsync(reaction.Emote, reaction.User.Value);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to remove reaction: {ex.Message}");
+        }
     }
 
     /// <summary>

@@ -1,6 +1,5 @@
 ﻿using Discord.Commands;
 using DiscordBot.Core;
-using DiscordBot.Services;
 
 namespace DiscordBot.Commands.TradeCommands
 {
