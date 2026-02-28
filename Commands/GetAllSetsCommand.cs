@@ -25,9 +25,9 @@ public class GetAllSetsCommand : ModuleBase<SocketCommandContext>
         try
         {
             string response = await CommandHandler._httpClient.GetStringAsync(CommandHandler.SetsApiUrl);
-            var setData = JsonConvert.DeserializeObject<SetApiResponse>(response);
+            var setData = JsonConvert.DeserializeObject<List<SetApiResponse>>(response);
 
-            if (setData?.Data == null || setData.Data.Count == 0)
+            if (setData == null || setData.Count == null)
             {
                 await ReplyAsync("❌ No sets found!");
                 return;
@@ -39,7 +39,7 @@ public class GetAllSetsCommand : ModuleBase<SocketCommandContext>
                 .WithMinValues(1)
                 .WithMaxValues(1);
 
-            foreach (Set set in setData.Data.Take(25))
+            foreach (SetApiResponse set in setData.Take(25))
             {
                 selectMenu.AddOption(set.Name, set.Id, $"ID: {set.Id}");
             }
