@@ -335,7 +335,7 @@ public static class CommandHandler
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to get random cards, ", ex.Message);
+            Console.WriteLine("Failed to get random cards, ", ex.Message);
             return [];
         }
     }
