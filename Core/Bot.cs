@@ -7,20 +7,15 @@ namespace DiscordBot.Core;
 /// <summary>
 ///     Represents the bot and handles its initialization and commands.
 /// </summary>
-public class Bot
+/// <remarks>
+///     Initializes a new instance of the <see cref="Bot"/> class.
+/// </remarks>
+/// <param name="client">
+///     The <see cref="DiscordSocketClient"/> instance used by the bot.
+/// </param>
+public class Bot(DiscordSocketClient client)
 {
-    private readonly DiscordSocketClient _client;
-
-    /// <summary>
-    ///     Initializes a new instance of the <see cref="Bot"/> class.
-    /// </summary>
-    /// <param name="client">
-    ///     The <see cref="DiscordSocketClient"/> instance used by the bot.
-    /// </param>
-    public Bot(DiscordSocketClient client)
-    {
-        _client = client;
-    }
+    private readonly DiscordSocketClient _client = client;
 
     /// <summary>
     ///     Starts the bot and logs it in using the provided token.

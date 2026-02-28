@@ -24,14 +24,14 @@ public class LockSetCommand : ModuleBase<SocketCommandContext>
             await ReplyAsync("The bot is currently inactive and not responding to commands.");
             return;
         }
-        if (CommandHandler.LockedSets.Contains(setId))
-        {
-            await ReplyAsync($"Set {setId} is already locked.");
-        }
-        else
+        if (!CommandHandler.LockedSets.Contains(setId))
         {
             CommandHandler.LockedSets.Add(setId);
             await ReplyAsync($"Set {setId} has been locked.");
+        }
+        else
+        {
+            await ReplyAsync($"Set {setId} is already locked.");
         }
     }
 }

@@ -1,25 +1,24 @@
 ﻿using DiscordBot.Models;
 
-namespace DiscordBot.Services
+namespace DiscordBot.Services;
+
+/// <summary>
+///     Represents a Pokémon card with its name, rarity, and images.
+/// </summary>
+public class Card
 {
     /// <summary>
-    ///     Represents a Pokémon card with its name, rarity, and images.
+    ///     Gets or sets the name of the card.
     /// </summary>
-    public class Card
-    {
-        /// <summary>
-        ///     Gets or sets the name of the card.
-        /// </summary>
-        public string Name { get; set; } = default!;
+    public string Name { get; set; } = default!;
 
-        /// <summary>
-        ///     Gets or sets the rarity of the card.
-        /// </summary>
-        public string Rarity { get; set; } = default!;
+    /// <summary>
+    ///     Gets or sets the rarity of the card.
+    /// </summary>
+    public string Rarity { get; set; } = default!;
 
-        /// <summary>
-        ///     Gets or sets the images associated with the card.
-        /// </summary>
-        public Images Images { get; set; } = default!;
-    }
+    /// <summary>
+    ///     Gets or sets the images associated with the card.
+    /// </summary>
+    public Images Images { get; set; } = default!;
 }

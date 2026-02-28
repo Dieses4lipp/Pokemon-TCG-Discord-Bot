@@ -1,42 +1,41 @@
 ﻿using Discord.WebSocket;
 
-namespace DiscordBot.Core
+namespace DiscordBot.Core;
+
+/// <summary>
+///     Handles interactions like select menu events from the Discord client.
+/// </summary>
+public class InteractionHandler
 {
+    private readonly DiscordSocketClient _client;
+
     /// <summary>
-    ///     Handles interactions like select menu events from the Discord client.
+    ///     Initializes a new instance of the <see cref="InteractionHandler"/> class.
     /// </summary>
-    public class InteractionHandler
+    /// <param name="client">
+    ///     The Discord client instance used for event handling.
+    /// </param>
+    public InteractionHandler(DiscordSocketClient client)
     {
-        private readonly DiscordSocketClient _client;
+        _client = client;
 
-        /// <summary>
-        ///     Initializes a new instance of the <see cref="InteractionHandler"/> class.
-        /// </summary>
-        /// <param name="client">
-        ///     The Discord client instance used for event handling.
-        /// </param>
-        public InteractionHandler(DiscordSocketClient client)
-        {
-            _client = client;
+        // Unsubscribe from event before subscribing to avoid multiple registrations
+        _client.SelectMenuExecuted -= HandleSelectMenu;
+        _client.SelectMenuExecuted += HandleSelectMenu;
+    }
 
-            // Unsubscribe from event before subscribing to avoid multiple registrations
-            _client.SelectMenuExecuted -= HandleSelectMenu;
-            _client.SelectMenuExecuted += HandleSelectMenu;
-        }
-
-        /// <summary>
-        ///     Handles the Select Menu executed event.
-        /// </summary>
-        /// <param name="component">
-        ///     The <see cref="SocketMessageComponent"/> associated with the select menu event.
-        /// </param>
-        /// <returns>
-        ///     A task that represents the asynchronous operation.
-        /// </returns>
-        public static async Task HandleSelectMenu(SocketMessageComponent component)
-        {
-            // Handle select menu interaction here
-            return;
-        }
+    /// <summary>
+    ///     Handles the Select Menu executed event.
+    /// </summary>
+    /// <param name="component">
+    ///     The <see cref="SocketMessageComponent"/> associated with the select menu event.
+    /// </param>
+    /// <returns>
+    ///     A task that represents the asynchronous operation.
+    /// </returns>
+    public static async Task HandleSelectMenu(SocketMessageComponent component)
+    {
+        // Handle select menu interaction here
+        throw new NotImplementedException();
     }
 }
