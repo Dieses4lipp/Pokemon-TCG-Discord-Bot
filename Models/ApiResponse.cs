@@ -1,6 +1,4 @@
-﻿using DiscordBot.Services;
-
-namespace DiscordBot.Models;
+﻿namespace DiscordBot.Models;
 
 /// <summary>
 ///     Represents the API response containing a list of Pokémon cards.

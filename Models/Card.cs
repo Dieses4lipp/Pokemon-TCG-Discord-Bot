@@ -1,6 +1,4 @@
-﻿using DiscordBot.Models;
-
-namespace DiscordBot.Services;
+﻿namespace DiscordBot.Models;
 
 /// <summary>
 ///     Represents a Pokémon card with its name, rarity, and images.
@@ -18,7 +16,7 @@ public class Card
     public string Rarity { get; set; } = default!;
 
     /// <summary>
-    ///     Gets or sets the images associated with the card.
+    ///     Gets or sets the image urls without "/low.png" or "/high.png" suffix.
     /// </summary>
-    public Images Images { get; set; } = default!;
+    public string Image { get; set; } = default!;
 }

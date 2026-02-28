@@ -32,7 +32,7 @@ public class ProfileCommand : ModuleBase<SocketCommandContext>
             .WithColor(Color.Blue);
         if (collection.FavoriteCard != null)
         {
-            embed.AddField("⭐Favorite Card⭐", collection.FavoriteCard.Name).WithImageUrl(collection.FavoriteCard.Images.Small);
+            embed.AddField("⭐Favorite Card⭐", collection.FavoriteCard.Name).WithImageUrl($"{collection.FavoriteCard.Image}/low.png");
         }
         else
         {

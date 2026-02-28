@@ -1,6 +1,4 @@
-﻿using DiscordBot.Services;
-
-namespace DiscordBot.Models;
+﻿namespace DiscordBot.Models;
 
 /// <summary>
 ///     Represents a trade session between two users.

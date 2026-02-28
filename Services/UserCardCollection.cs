@@ -1,4 +1,6 @@
-﻿namespace DiscordBot.Services;
+﻿using DiscordBot.Models;
+
+namespace DiscordBot.Services;
 
 /// <summary>
 ///     Represents a collection of Pokémon cards for a specific user.
