@@ -2,7 +2,6 @@
 using Discord.WebSocket;
 using DiscordBot.Core;
 using DiscordBot.Models;
-using DiscordBot.Services;
 
 namespace DiscordBot.Commands.TradeCommands;
 

@@ -1,6 +1,4 @@
-﻿using DiscordBot.Models;
-
-namespace DiscordBot.Services;
+﻿namespace DiscordBot.Models;
 
 /// <summary>
 ///     Represents a collection of Pokémon cards for a specific user.

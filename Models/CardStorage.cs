@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace DiscordBot.Services;
+namespace DiscordBot.Models;
 
 /// <summary>
 ///     Provides methods to load and save user card collections to JSON files.
