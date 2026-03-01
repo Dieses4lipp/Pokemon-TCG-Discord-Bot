@@ -190,7 +190,7 @@ public static class CommandHandler
             Card cardToSave = session.Cards[session.CurrentIndex];
             UserCardCollection collection = await CardStorage.LoadUserCardsAsync(session.UserId);
 
-            var cardIdentifier = $"{cardToSave.Name}_{cardToSave.Rarity}";
+            var cardIdentifier = $"{cardToSave.SetId}_{cardToSave.LocalId}";
             if (session.SavedCardIdentifiers.Contains(cardIdentifier))
             {
                 IMessageChannel? msgCHannel = await channel.GetOrDownloadAsync();
