@@ -43,7 +43,8 @@ public static class CardStorage
             return JsonConvert.DeserializeObject<UserCardCollection>(json) ?? new UserCardCollection();
         }
 
-        return new UserCardCollection { UserId = userId, Cards = [] }; // Return an empty collection if file doesn't exist
+        // Return an empty collection if file doesn't exist
+        return new UserCardCollection { UserId = userId, Cards = [] };
     }
 
     /// <summary>

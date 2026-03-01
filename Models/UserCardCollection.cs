@@ -33,5 +33,5 @@ public class UserCardCollection
     /// <summary>
     ///     Gets or sets the user's favorite card, if any.
     /// </summary>
-    public Card FavoriteCard { get; set; } = default!;
+    public Card? FavoriteCard { get; set; }
 }

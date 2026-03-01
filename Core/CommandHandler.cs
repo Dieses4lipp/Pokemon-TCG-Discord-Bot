@@ -260,7 +260,7 @@ public static class CommandHandler
             await channelForMsg.SendMessageAsync($"Your favorite card has been set to '{favoriteCard.Name}'!");
         }
 
-        // Remove the reaction after processing. Needs permission to manage reagtions
+        // Remove the reaction after processing. Needs permission to manage reactions
         try
         {
             await message.RemoveReactionAsync(reaction.Emote, reaction.User.Value);
@@ -365,7 +365,7 @@ public static class CommandHandler
             if (cardArray == null)
             {
                 Console.WriteLine("No card array found in API response.");
-                return new List<Card>();
+                return [];
             }
 
             // Map array items to card briefs (extract id field)
@@ -384,7 +384,7 @@ public static class CommandHandler
             if (cardIds.Count == 0)
             {
                 Console.WriteLine("No card ids found in card array.");
-                return new List<Card>();
+                return [];
             }
 
             // Randomly pick up to 'count' ids
@@ -430,23 +430,20 @@ public static class CommandHandler
         catch (Exception ex)
         {
             Console.WriteLine($"Failed to get random cards: {ex.Message}");
-            return new List<Card>();
+            return [];
         }
     }
 
     /// <summary>
     ///     Handles cleanup when a user leaves the guild by deleting their saved card collection.
     /// </summary>
-    /// <param name="guild">
-    ///     The guild from which the user left.
-    /// </param>
     /// <param name="user">
     ///     The user who left.
     /// </param>
     /// <returns>
     ///     A task that represents the asynchronous operation.
     /// </returns>
-    public static Task HandleUserLeft(SocketGuild guild, SocketUser user)
+    public static Task HandleUserLeft(SocketGuild _, SocketUser user)
     {
         string userFilePath = Path.Combine(CardStorage.UserCardsDirectory, $"{user.Id}.json");
 

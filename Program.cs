@@ -90,14 +90,6 @@ internal static class Program
 
         var bot = new Bot(client);
         CommandHandler.ClearTradeSessions();
-        // Retrieve CommandsModule from DI container and register events
-        client.ReactionAdded += (cache, channel, reaction) =>
-        {
-            _ = Task.Run(async () => await CommandHandler.HandleReactionAdded(cache, channel, reaction));
-            return Task.CompletedTask;
-        };
-        client.UserLeft += CommandHandler.HandleUserLeft;
-        client.SelectMenuExecuted += InteractionHandler.HandleSelectMenu;
         // Register commands and start the bot
         await CommandHandler.RegisterCommandsAsync(Services);
         await bot.StartAsync(botToken);

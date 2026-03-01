@@ -3,7 +3,7 @@
 /// <summary>
 ///     Represents a Pokémon card with its name, rarity, and images.
 /// </summary>
-public class Card
+public record Card
 {
     /// <summary>
     ///     Gets or sets the name of the card.
