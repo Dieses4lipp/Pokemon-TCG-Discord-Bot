@@ -1,8 +1,20 @@
 ﻿using Discord;
-using Discord.Commands;
 using Discord.WebSocket;
 using DiscordBot.Commands;
-using DiscordBot.Commands.SlashCommandHandlers;
+using DiscordBot.Commands.SlashCommandHandlers.AdminCommands.LockSetCommand;
+using DiscordBot.Commands.SlashCommandHandlers.AdminCommands.StatsCommand;
+using DiscordBot.Commands.SlashCommandHandlers.AdminCommands.TurnOffCommand;
+using DiscordBot.Commands.SlashCommandHandlers.AdminCommands.TurnOnCommand;
+using DiscordBot.Commands.SlashCommandHandlers.AdminCommands.UnlockSetCommand;
+using DiscordBot.Commands.SlashCommandHandlers.TradeCommands.CancelTradeCommand;
+using DiscordBot.Commands.SlashCommandHandlers.TradeCommands.ConfirmTradeCommand;
+using DiscordBot.Commands.SlashCommandHandlers.TradeCommands.TradeCommand;
+using DiscordBot.Commands.SlashCommandHandlers.TrainerCommands.HelpCommand;
+using DiscordBot.Commands.SlashCommandHandlers.TrainerCommands.InventoryCommand;
+using DiscordBot.Commands.SlashCommandHandlers.TrainerCommands.ProfileCommand;
+using DiscordBot.Commands.SlashCommandHandlers.TrainerCommands.PullCommand;
+using DiscordBot.Commands.SlashCommandHandlers.TrainerCommands.RestartCommand;
+using DiscordBot.Commands.SlashCommandHandlers.TrainerCommands.SetsCommand;
 
 namespace DiscordBot.Core;
 
@@ -24,9 +36,20 @@ public class Bot(DiscordSocketClient client)
         var commandList = new List<ApplicationCommandProperties>();
 
         commandList.AddRange([
-                SlashCommands.PullCommand().Build(),
-                SlashCommands.InventoryCommand().Build(),
-                SlashCommands.HelpCommand().Build(),
+                SlashCommandBuilders.PullCommand().Build(),
+                SlashCommandBuilders.InventoryCommand().Build(),
+                SlashCommandBuilders.HelpCommand().Build(),
+                SlashCommandBuilders.ProfileCommand().Build(),
+                SlashCommandBuilders.StatsCommand().Build(),
+                SlashCommandBuilders.TurnOnCommand().Build(),
+                SlashCommandBuilders.TurnOffCommand().Build(),
+                SlashCommandBuilders.RestartCommand().Build(),
+                SlashCommandBuilders.LockSetCommand().Build(),
+                SlashCommandBuilders.UnlockSetCommand().Build(),
+                SlashCommandBuilders.TradeCommand().Build(),
+                SlashCommandBuilders.ConfirmTradeCommand().Build(),
+                SlashCommandBuilders.CancelTradeCommand().Build(),
+                SlashCommandBuilders.SetsCommand().Build(),
         ]);
 
         // This one call handles everything: Adds, Updates, and Deletes
@@ -42,22 +65,62 @@ public class Bot(DiscordSocketClient client)
     /// </param>
     public static async Task SyncCommands(SocketGuild guild)
     {
-        Console.WriteLine("Deleting all slash commands from test server");
-        await guild.DeleteApplicationCommandsAsync();
-
-        var guildCommand = SlashCommands.PullCommand().Build();
-        var helpCommand = SlashCommands.HelpCommand().Build();
-        var inventoryCommand = SlashCommands.InventoryCommand().Build();
-
+        // Be careful RATE LIMIT !!!
+        var guildCommand = SlashCommandBuilders.PullCommand().Build();
+        Console.WriteLine("Successfully built pull command");
+        var helpCommand = SlashCommandBuilders.HelpCommand().Build();
+        Console.WriteLine("Successfully built help command");
+        var inventoryCommand = SlashCommandBuilders.InventoryCommand().Build();
+        Console.WriteLine("Successfully built inventory command");
+        var profileCommand = SlashCommandBuilders.ProfileCommand().Build();
+        Console.WriteLine("Successfully built profile command");
+        var statsCommand = SlashCommandBuilders.StatsCommand().Build();
+        Console.WriteLine("Successfully built stats command");
+        var restartCommand = SlashCommandBuilders.RestartCommand().Build();
+        Console.WriteLine("Successfully build restart command");
+        var turnOffCommand = SlashCommandBuilders.TurnOffCommand().Build();
+        Console.WriteLine("Successfully build turnoff command");
+        var turnOnCommand = SlashCommandBuilders.TurnOnCommand().Build();
+        Console.WriteLine("Successfully build turnon command");
+        var lockSetCommand = SlashCommandBuilders.LockSetCommand().Build();
+        Console.WriteLine("Successfully build lockset command");
+        var unlockSetCommand = SlashCommandBuilders.UnlockSetCommand().Build();
+        Console.WriteLine("Successfully build unlockset command");
+        var tradeCommand = SlashCommandBuilders.TradeCommand().Build();
+        Console.WriteLine("Successfully build trade command");
+        var confirmTradeCommand = SlashCommandBuilders.ConfirmTradeCommand().Build();
+        Console.WriteLine("Successfully build confirmtrade command");
+        var cancelTradeCommand = SlashCommandBuilders.CancelTradeCommand().Build();
+        Console.WriteLine("Successfully build canceltrade command");
+        var setsCommand = SlashCommandBuilders.SetsCommand().Build();
+        Console.WriteLine("Successfully build sets command");
         List<ApplicationCommandProperties> builtSlashCommands = [
             guildCommand,
             helpCommand,
-            inventoryCommand
+            inventoryCommand,
+            profileCommand,
+            statsCommand,
+            restartCommand,
+            turnOffCommand,
+            turnOnCommand,
+            lockSetCommand,
+            unlockSetCommand,
+            tradeCommand,
+            confirmTradeCommand,
+            cancelTradeCommand,
+            setsCommand,
             ];
+        Console.WriteLine("Adding slash commands to test server");
         await guild.BulkOverwriteApplicationCommandAsync([.. builtSlashCommands]);
         Console.WriteLine("Re-added slash commands to test server");
     }
 
+    /// <summary>
+    ///     Handles the button press event
+    /// </summary>
+    /// <param name="component">
+    ///     The <see cref="SocketMessageComponent"/> which is pressed
+    /// </param>
     public static async Task HandleButtonPressAsync(SocketMessageComponent component)
     {
         await (component.Data.CustomId switch
@@ -92,11 +155,55 @@ public class Bot(DiscordSocketClient client)
                     break;
 
                 case "help":
-                    await new HelpCommandHandler().Handle(cmd);
+                    await new HelpCommandHandler().Handle(cmd, _client.CurrentUser.GetAvatarUrl());
                     break;
 
                 case "inventory":
                     await InventoryCommandHandler.Handle(cmd);
+                    break;
+
+                case "profile":
+                    await ProfileCommandHandler.Handle(cmd);
+                    break;
+
+                case "stats":
+                    await StatsCommandHandler.Handle(cmd, _client);
+                    break;
+
+                case "restart":
+                    await RestartCommandHandler.Handle(cmd);
+                    break;
+
+                case "turnoff":
+                    await TurnOffCommandHandler.Handle(cmd);
+                    break;
+
+                case "turnon":
+                    await TurnOnCommandHandler.Handle(cmd);
+                    break;
+
+                case "lockset":
+                    await LockSetCommandHandler.Handle(cmd);
+                    break;
+
+                case "unlockset":
+                    await UnlockSetCommandHandler.Handle(cmd);
+                    break;
+
+                case "trade":
+                    await TradeCommandHandler.Handle(cmd);
+                    break;
+
+                case "confirmtrade":
+                    await ConfirmTradeCommandHandler.Handle(cmd);
+                    break;
+
+                case "canceltrade":
+                    await CancelTradeCommandHandler.Handle(cmd);
+                    break;
+
+                case "sets":
+                    await SetsCommandHandler.Handle(cmd);
                     break;
             }
         }
@@ -120,15 +227,8 @@ public class Bot(DiscordSocketClient client)
     {
         // Subscribe to events
         _client.UserLeft += CommandHandler.HandleUserLeft;
-        _client.SelectMenuExecuted += InteractionHandler.HandleSelectMenu;
         _client.Log += Log;
         _client.Ready += OnReady;
-        _client.MessageReceived += HandleCommandAsync;
-        _client.ReactionAdded += (cache, channel, reaction) =>
-        {
-            _ = Task.Run(async () => await CommandHandler.HandleReactionAdded(cache, channel, reaction));
-            return Task.CompletedTask;
-        };
 
         // Register slash commands for the test server for debugging purposes
         _client.Ready += async () =>
@@ -145,45 +245,6 @@ public class Bot(DiscordSocketClient client)
         Console.WriteLine("Starting bot...");
         await _client.LoginAsync(TokenType.Bot, botToken);
         await _client.StartAsync();
-    }
-
-    /// <summary>
-    ///     Handles incoming messages and executes commands when prefixed with '!' character.
-    /// </summary>
-    /// <param name="arg">
-    ///     The incoming <see cref="SocketMessage"/> to handle.
-    /// </param>
-    /// <returns>
-    ///     A task representing the asynchronous operation.
-    /// </returns>
-    public async Task HandleCommandAsync(SocketMessage arg)
-    {
-        if (arg is not SocketUserMessage message) return;
-        if (message.Author.IsBot) return;
-
-        Console.WriteLine($"Received message: '{message.Content}'");
-
-        int argPos = 0;
-        if (message.HasCharPrefix('!', ref argPos))
-        {
-            _ = Task.Run(async () =>
-            {
-                var context = new SocketCommandContext(_client, message);
-                var result = await Program.Commands.ExecuteAsync(context, argPos, Program.Services);
-
-                if (!result.IsSuccess)
-                {
-                    Console.WriteLine($"Error: {result.ErrorReason}");
-                    await context.Channel.SendMessageAsync($"❌ Error: {result.ErrorReason}");
-                    return;
-                }
-                Console.WriteLine("Command handled successfully!");
-            });
-        }
-        else
-        {
-            Console.WriteLine("Message did not have '!' prefix.");
-        }
     }
 
     /// <summary>

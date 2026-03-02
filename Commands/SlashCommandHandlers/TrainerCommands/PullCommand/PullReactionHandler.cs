@@ -3,7 +3,7 @@ using Discord.WebSocket;
 using DiscordBot.Core;
 using DiscordBot.Models;
 
-namespace DiscordBot.Commands.SlashCommandHandlers;
+namespace DiscordBot.Commands.SlashCommandHandlers.TrainerCommands.PullCommand;
 
 /// <summary>
 ///     A class that handles reactions on bot messages.
@@ -23,9 +23,11 @@ public static class PullReactionHandler
     /// </param>
     public static async Task HandleSaveCardAsync(SocketMessageComponent component)
     {
+        // Defer the response to give more time to process
+        await component.DeferAsync(ephemeral: true);
+
         if (!ActiveSessions.TryGetValue(component.Message.Id, out var session))
             return;
-
         if (component.User.Id != session.UserId)
             return;
 
@@ -36,8 +38,9 @@ public static class PullReactionHandler
             .Build();
 
         Card cardToSave = session.Cards[session.CurrentIndex];
-        UserCardCollection collection = await CardStorage.LoadUserCardsAsync(session.UserId);
         var cardIdentifier = $"{cardToSave.Name}_{cardToSave.Rarity}";
+
+        UserCardCollection collection = await CardStorage.LoadUserCardsAsync(session.UserId);
 
         if (session.SavedCardIdentifiers.Contains(cardIdentifier))
         {
@@ -49,14 +52,14 @@ public static class PullReactionHandler
 
         if (collection.Cards.Count >= 10)
         {
-            Console.WriteLine($"User {session.UserId} has reached the maximum card collection size.");
+            await component.FollowupAsync("❌ Your inventory is full (Max 10 cards)! Delete some cards in `/inventory` first.", ephemeral: true);
             return;
         }
 
         collection.Cards.Add(cardToSave);
         await CardStorage.SaveUserCardsAsync(collection);
 
-        await component.UpdateAsync(m => m.Components = disabledButtons);
+        await component.ModifyOriginalResponseAsync(m => m.Components = disabledButtons);
     }
 
     /// <summary>
@@ -71,6 +74,9 @@ public static class PullReactionHandler
     /// </param>
     public static async Task HandleMoveCardIndex(SocketMessageComponent component, int direction)
     {
+        // Defer the response to give more time to process
+        await component.DeferAsync(ephemeral: true);
+
         if (!ActiveSessions.TryGetValue(component.Message.Id, out var session)) return;
 
         session.CurrentIndex = (session.CurrentIndex + direction + session.Cards.Count) % session.Cards.Count;
@@ -88,7 +94,7 @@ public static class PullReactionHandler
 
         var embed = CommandHandler.BuildCardEmbed(currentCard, session.CurrentIndex + 1, session.Cards.Count);
 
-        await component.UpdateAsync(m =>
+        await component.ModifyOriginalResponseAsync(m =>
         {
             m.Embed = embed;
             m.Components = buttons;

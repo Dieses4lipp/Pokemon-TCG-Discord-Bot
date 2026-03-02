@@ -12,7 +12,10 @@
 /// <param name="cardToTrade">
 ///     The card being traded.
 /// </param>
-public class TradeSession(ulong senderId, ulong receiverId, Card cardToTrade)
+/// <param name="cardToReceive">
+///     The card being received.
+/// </param>
+public class TradeSession(ulong senderId, ulong receiverId, Card cardToTrade, Card cardToReceive)
 {
     /// <summary>
     ///     Gets the ID of the user who is sending the card.
@@ -28,4 +31,9 @@ public class TradeSession(ulong senderId, ulong receiverId, Card cardToTrade)
     ///     Gets the card that is being traded.
     /// </summary>
     public Card CardToTrade { get; } = cardToTrade;
+
+    /// <summary>
+    ///     Gets the card that is being received.
+    /// </summary>
+    public Card CardToReceive { get; } = cardToReceive;
 }
