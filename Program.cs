@@ -24,21 +24,18 @@ internal static class Program
     /// </summary>
     public static void RestartBot()
     {
-        string fileName;
-        try
-        {
-            fileName = _currentProcess.MainModule!.FileName;
-        }
-        catch (Exception)
-        {
-            fileName = "Unreadable-FileName";
-        }
+        string fileName = Environment.ProcessPath ?? "dotnet";
+
         var startInfo = new ProcessStartInfo
         {
             FileName = fileName,
-            Arguments = string.Join(" ", Environment.GetCommandLineArgs().Skip(1)),
+            // If it's a dll handled differently
+            Arguments = fileName.EndsWith(".dll")
+            ? $"{fileName} {string.Join(" ", Environment.GetCommandLineArgs().Skip(1))}"
+            : string.Join(" ", Environment.GetCommandLineArgs().Skip(1)),
             UseShellExecute = false
         };
+
         Process.Start(startInfo);
         _currentProcess.Kill();
     }
@@ -85,21 +82,10 @@ internal static class Program
         Services = new ServiceCollection()
             .AddSingleton(client)
             .AddSingleton(Commands)
-            .AddSingleton<InteractionHandler>()
             .BuildServiceProvider();
 
         var bot = new Bot(client);
         CommandHandler.ClearTradeSessions();
-        // Retrieve CommandsModule from DI container and register events
-        client.ReactionAdded += (cache, channel, reaction) =>
-        {
-            _ = Task.Run(async () => await CommandHandler.HandleReactionAdded(cache, channel, reaction));
-            return Task.CompletedTask;
-        };
-        client.UserLeft += CommandHandler.HandleUserLeft;
-        client.SelectMenuExecuted += InteractionHandler.HandleSelectMenu;
-        // Register commands and start the bot
-        await CommandHandler.RegisterCommandsAsync(Services);
         await bot.StartAsync(botToken);
         // Log the bot's start time and keep the application running
         StartTime = DateTime.UtcNow;

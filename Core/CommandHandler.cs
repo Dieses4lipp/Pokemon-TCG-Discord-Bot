@@ -1,11 +1,7 @@
 ﻿using System.Diagnostics;
-using System.Reflection;
 using Discord;
-using Discord.Commands;
 using Discord.WebSocket;
 using DiscordBot.Models;
-using Microsoft.Extensions.DependencyInjection;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace DiscordBot.Core;
@@ -69,30 +65,6 @@ public static class CommandHandler
     public static long LastApiLatency { get; private set; } = 0;
 
     /// <summary>
-    ///     Registers all commands within the assembly.
-    /// </summary>
-    /// <param name="services">
-    ///     The service provider used to resolve services.
-    /// </param>
-    /// <returns>
-    ///     A task representing the asynchronous operation.
-    /// </returns>
-    public static async Task RegisterCommandsAsync(IServiceProvider services)
-    {
-        var commandService = services.GetRequiredService<CommandService>();
-        await commandService.AddModulesAsync(Assembly.GetEntryAssembly(), services);
-    }
-
-    public static void LogActiveTrades()
-    {
-        Console.WriteLine("Active Trades:");
-        foreach (var trade in ActiveTrades)
-        {
-            Console.WriteLine($"Sender: {trade.Value.SenderId}, Receiver: {trade.Value.ReceiverId}, Card: {trade.Value.CardToTrade.Name}");
-        }
-    }
-
-    /// <summary>
     ///     Determines the rarity of a card based on predefined probabilities.
     /// </summary>
     /// <param name="random">
@@ -141,172 +113,6 @@ public static class CommandHandler
             .WithImageUrl($"{card.Image}/low.png")
             .WithColor(Color.Blue)
             .Build();
-    }
-
-    /// <summary>
-    ///     Handles reactions added to a card embed message to navigate or modify the user's card collection.
-    /// </summary>
-    /// <param name="cache">
-    ///     The cached user message.
-    /// </param>
-    /// <param name="channel">
-    ///     The channel where the message was sent.
-    /// </param>
-    /// <param name="reaction">
-    ///     The reaction that was added.
-    /// </param>
-    /// <returns>
-    ///     A task that represents the asynchronous operation.
-    /// </returns>
-    public static async Task HandleReactionAdded(Cacheable<IUserMessage, ulong> cache, Cacheable<IMessageChannel, ulong> channel, SocketReaction reaction)
-    {
-        if (reaction.User.Value.IsBot)
-        {
-            return;
-        }
-
-        if (!ActiveSessions.TryGetValue(reaction.MessageId, out PackSession? session))
-        {
-            return;
-        }
-
-        if (reaction.UserId != session.UserId) return;
-
-        IUserMessage? message = await cache.GetOrDownloadAsync();
-
-        if (reaction.Emote.Name == "▶️" || reaction.Emote.Name == "◀️")
-        {
-            // Navigate through cards.
-            session.CurrentIndex = reaction.Emote.Name == "▶️"
-                ? (session.CurrentIndex + 1) % session.Cards.Count
-                : (session.CurrentIndex - 1 + session.Cards.Count) % session.Cards.Count;
-
-            // Update the embed to show the new card.
-            await message.ModifyAsync(m => m.Embed = BuildCardEmbed(session.Cards[session.CurrentIndex], session.CurrentIndex + 1, session.Cards.Count));
-        }
-        else if (reaction.Emote.Name == "💾")
-        {
-            // Save the current card.
-            Card cardToSave = session.Cards[session.CurrentIndex];
-            UserCardCollection collection = await CardStorage.LoadUserCardsAsync(session.UserId);
-
-            var cardIdentifier = $"{cardToSave.Name}_{cardToSave.Rarity}";
-            if (session.SavedCardIdentifiers.Contains(cardIdentifier))
-            {
-                IMessageChannel? msgCHannel = await channel.GetOrDownloadAsync();
-                await msgCHannel.SendMessageAsync("You already have this card in your collection");
-                return;
-            }
-
-            session.SavedCardIdentifiers.Add(cardIdentifier);
-
-            if (collection.Cards.Count >= 10)
-            {
-                IMessageChannel? msgChannel = await channel.GetOrDownloadAsync();
-                await msgChannel.SendMessageAsync("You can only store up to 10 cards! Try !mycards and delete a card to make room!");
-                return;
-            }
-
-            collection.Cards.Add(cardToSave);
-            await CardStorage.SaveUserCardsAsync(collection);
-
-            IMessageChannel? channelForMsg = await channel.GetOrDownloadAsync();
-            await channelForMsg.SendMessageAsync($"Card '{cardToSave.Name}' has been saved to your collection!");
-        }
-        else if (reaction.Emote.Name == "🗑️")
-        {
-            // Delete the current card from the collection.
-            Card cardToDelete = session.Cards[session.CurrentIndex];
-            UserCardCollection collection = await CardStorage.LoadUserCardsAsync(session.UserId);
-
-            var cardIdentifier = $"{cardToDelete.Name}_{cardToDelete.Rarity}";
-            session.SavedCardIdentifiers.Remove(cardIdentifier);
-            int removedCount = collection.Cards.RemoveAll(c => c.Name == cardToDelete.Name && c.Rarity == cardToDelete.Rarity);
-            if (removedCount > 0)
-            {
-                await CardStorage.SaveUserCardsAsync(collection);
-                session.Cards.RemoveAt(session.CurrentIndex);
-
-                if (session.Cards.Count == 0)
-                {
-                    await message.DeleteAsync();
-                    ActiveSessions.Remove(message.Id);
-                    return;
-                }
-
-                if (session.CurrentIndex >= session.Cards.Count)
-                {
-                    session.CurrentIndex = session.Cards.Count - 1;
-                }
-
-                await message.ModifyAsync(m => m.Embed = BuildCardEmbed(session.Cards[session.CurrentIndex], session.CurrentIndex + 1, session.Cards.Count));
-
-                IMessageChannel? channelForMsg = await channel.GetOrDownloadAsync();
-                await channelForMsg.SendMessageAsync($"Card '{cardToDelete.Name}' has been removed from your collection!");
-            }
-            else
-            {
-                IMessageChannel? channelForMsg = await channel.GetOrDownloadAsync();
-                await channelForMsg.SendMessageAsync("Card not found in your collection. Did you save a card with the save symbol next to the Card?");
-            }
-        }
-        else if (reaction.Emote.Name == "⭐")
-        {
-            Card favoriteCard = session.Cards[session.CurrentIndex];
-            UserCardCollection collection = await CardStorage.LoadUserCardsAsync(session.UserId);
-            collection.FavoriteCard = favoriteCard;
-            await CardStorage.SaveUserCardsAsync(collection);
-            IMessageChannel? channelForMsg = await channel.GetOrDownloadAsync();
-            await channelForMsg.SendMessageAsync($"Your favorite card has been set to '{favoriteCard.Name}'!");
-        }
-
-        // Remove the reaction after processing. Needs permission to manage reagtions
-        try
-        {
-            await message.RemoveReactionAsync(reaction.Emote, reaction.User.Value);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Failed to remove reaction: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    ///     Saves the specified user's card collection to a JSON file.
-    /// </summary>
-    /// <param name="collection">
-    ///     The user card collection to save.
-    /// </param>
-    /// <returns>
-    ///     A task that represents the asynchronous operation.
-    /// </returns>
-    public static async Task SaveUserCardsAsync(UserCardCollection collection)
-    {
-        string userFilePath = Path.Combine(CardStorage.UserCardsDirectory, $"{collection.UserId}.json");
-        string json = JsonConvert.SerializeObject(collection, Formatting.Indented);
-        await File.WriteAllTextAsync(userFilePath, json);
-    }
-
-    /// <summary>
-    ///     Loads the card collection for the specified user from a JSON file. If the file does not
-    ///     exist, returns an empty collection.
-    /// </summary>
-    /// <param name="userId">
-    ///     The user's ID.
-    /// </param>
-    /// <returns>
-    ///     A task that returns a <see cref="UserCardCollection"/> representing the user's saved cards.
-    /// </returns>
-    public static async Task<UserCardCollection> LoadUserCardsAsync(ulong userId)
-    {
-        string userFilePath = Path.Combine(CardStorage.UserCardsDirectory, $"{userId}.json");
-        if (File.Exists(userFilePath))
-        {
-            string json = await File.ReadAllTextAsync(userFilePath);
-            return JsonConvert.DeserializeObject<UserCardCollection>(json) ?? new UserCardCollection();
-        }
-
-        return new UserCardCollection { UserId = userId, Cards = [] };
     }
 
     /// <summary>
@@ -365,7 +171,7 @@ public static class CommandHandler
             if (cardArray == null)
             {
                 Console.WriteLine("No card array found in API response.");
-                return new List<Card>();
+                return [];
             }
 
             // Map array items to card briefs (extract id field)
@@ -384,7 +190,7 @@ public static class CommandHandler
             if (cardIds.Count == 0)
             {
                 Console.WriteLine("No card ids found in card array.");
-                return new List<Card>();
+                return [];
             }
 
             // Randomly pick up to 'count' ids
@@ -430,23 +236,20 @@ public static class CommandHandler
         catch (Exception ex)
         {
             Console.WriteLine($"Failed to get random cards: {ex.Message}");
-            return new List<Card>();
+            return [];
         }
     }
 
     /// <summary>
     ///     Handles cleanup when a user leaves the guild by deleting their saved card collection.
     /// </summary>
-    /// <param name="guild">
-    ///     The guild from which the user left.
-    /// </param>
     /// <param name="user">
     ///     The user who left.
     /// </param>
     /// <returns>
     ///     A task that represents the asynchronous operation.
     /// </returns>
-    public static Task HandleUserLeft(SocketGuild guild, SocketUser user)
+    public static Task HandleUserLeft(SocketGuild _, SocketUser user)
     {
         string userFilePath = Path.Combine(CardStorage.UserCardsDirectory, $"{user.Id}.json");
 
