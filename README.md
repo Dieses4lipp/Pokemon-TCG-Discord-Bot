@@ -1,10 +1,18 @@
+[api-url]: https://tcgdex.dev/
+[discord-developer-portal]: https://discord.com/developers/applications
+[discord-dotnet]: https://github.com/discord-net/Discord.Net
+[github]: https://github.com/Dieses4lipp
+[linkedin-profile]: https://www.linkedin.com/in/philipp-spiekermann-a01975352/
+[x-profile]: https://x.com/DiesesPhilipp
+[dotnet-download]: https://dotnet.microsoft.com/download
+
 # Pokémon TCG Discord Bot
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Philipp%20Spiekermann-blue?style=flat&logo=linkedin)](https://www.linkedin.com/in/philipp-spiekermann-a01975352/) [![Twitter](https://img.shields.io/badge/Twitter-@DiesesPhilipp-1DA1F2?style=flat&logo=twitter)](https://x.com/DiesesPhilipp)
+[![GitHub](https://img.shields.io/badge/GitHub-Dieses4lipp-blue?logo=github)][github]
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Philipp%20Spiekermann-blue?style=flat&logo=linkedin)][linkedin-profile] 
+[![Twitter](https://img.shields.io/badge/Twitter-@DiesesPhilipp-1DA1F2?style=flat&logo=x)][x-profile]
 
 
-
-
-A feature-rich Discord bot that brings the Pokémon Trading Card Game experience to your server. Pull packs of random Pokémon cards, manage your personal collection, trade with friends, and more - all powered by the official [Pokémon TCG API](https://pokemontcg.io/).
+A feature-rich Discord bot that brings the Pokémon Trading Card Game experience to your server. Pull packs with random Pokémon cards, manage your personal collection, trade with friends, and more - all powered by the [Pokémon TCG API][api-url].
 
 ---
 
@@ -17,7 +25,6 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
 - [Commands](#commands)
 - [Bot Architecture](#bot-architecture)
 - [Contributing](#contributing)
-- [License](#license)
 - [Acknowledgements](#acknowledgements)
 
 ---
@@ -25,22 +32,22 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
 ## Features
 
 - **Pack Pulling:**  
-  Pull a pack of 9 random Pokémon cards using `!pullpack [set ID]`.
+  Pull a pack containing 9 random Pokémon cards using `/pull [set-id]`.
   
 - **Collection Management:**  
-  View your saved cards with `!mycards` and manage your collection directly in Discord.
+  View your saved cards with `/inventory` and manage your collection directly in Discord.
 
-- **Set Browsing:**  
-  Use `!sets` to see a list of available Pokémon card sets.
+- **Set Browsing: (Currently n development)**  
+  Use `/sets` to see a list of available Pokémon card sets.
 
-- **Trading System:**  
-  Initiate trades with other users using `!trade [user] [card index]` along with commands to confirm (`!confirmtrade`) or cancel (`!canceltrade`) a trade.
+- **Trading System: (Currently n development)**  
+  Initiate trades with other users using `/trade [user] [your-card] [their-card]` along with commands to confirm (`/confirmtrade`) or cancel (`/canceltrade`) a trade.
 
 - **User Profiles:**  
-  Display user profiles with `!profile [user]` to see their collection or trading history.
+  Display user profiles with `/profile [user]` to see their collection or trading history.
 
 - **Administrative Commands:**  
-  Admins can lock or unlock specific card sets (`!lock [set ID]` and `!unlock [set ID]`), restart the bot (`!restart`), or control its active status using `!turnon`/`!turnoff`. Additionally, view bot statistics with `!stats`.
+  Admins can lock or unlock specific card sets (`/lock [set-id]` and `/unlock [set-id]`), restart the bot (`/restart`), or control its active status using `/turnon`/`/turnoff`. Additionally, view bot statistics with `/stats`.
 
 - **Robust Command Handling:**  
   Commands are processed using a dedicated command handler with logging and detailed error reporting.
@@ -51,9 +58,9 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
 
 ### Prerequisites
 
-- [.NET 6.0 SDK or later](https://dotnet.microsoft.com/download)
-- A Discord account and a bot token (obtain one via the [Discord Developer Portal](https://discord.com/developers/applications))
-- An API key for the [Pokémon TCG API](https://pokemontcg.io/) (optional but recommended for higher rate limits)
+- Download [.NET 6.0 SDK or later][dotnet-download]
+- A Discord account and a bot token (obtain one via the [Discord Developer Portal][discord-developer-portal])
+- An API key for the [Pokémon TCG API][api-url] (optional but recommended for higher rate limits)
 
 ### Setup Steps
 
@@ -89,23 +96,22 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
 
 ## Configuration
 
-- **Command Prefix:**  
-  The bot listens for commands starting with `!`. You can modify this in the command handling logic if needed.
-
 - **API Endpoints:**  
-  The bot uses endpoints from the Pokémon TCG API to fetch card and set data. Update these in the `CommandHandler` class if necessary.
+  The bot uses endpoints from the [Pokémon TCG API][api-url] to fetch card and set data. Update these in the `CommandHandler` class if necessary.
 
 - **Logging:**  
   Logging is routed to the console to help you monitor bot activity and debug errors.
 
 - **Security Note:**  
-  **Never share your bot token publicly!** Always store it securely in your environment variables or configuration files (e.g., the `.env` file). If your token is ever exposed, reset it immediately through the [Discord Developer Portal](https://discord.com/developers/applications).
+  **Never share your bot token publicly!** Always store it securely in your environment variables or configuration files (e.g., the `.env` file). If your token is ever exposed, reset it immediately through the [Discord Developer Portal][discord-developer-portal].
 
 ---
 
 ## Usage
 
-Once the bot is running and added to your Discord server, interact with it using the commands listed below. It automatically logs in, connects, and starts listening for commands with the `!` prefix.
+Once the bot is running and added to your Discord server, interact with it using the commands listed below. It automatically logs in, connects, and starts listening to slash commands with the `/` prefix. The commands are server specific and are automatically registered when the bot joins a server. 
+
+**Important:** to automatically add the commands the bot has to be running and online, else you have to register the commands manually. Use the SyncCommands() method in the Bot.cs and enter the name of your server in the event subscription in StartAsync().
 
 ---
 
@@ -113,51 +119,51 @@ Once the bot is running and added to your Discord server, interact with it using
 
 ### General Commands
 
-- **`!pullpack [set ID]`**  
-  Pulls a pack of 9 random Pokémon cards. If a set ID is provided, only cards from that set are used.
+- **`/pull [set-id]`**  
+  Pulls a pack containing 9 random Pokémon cards. The cards are randomly chosen from the pool of cards belonging to the set with the given set-id.
 
-- **`!mycards`**  
+- **`/inventory`**  
   Displays your saved Pokémon cards.
 
-- **`!sets`**  
+- **`/sets`**  
   Shows a list of available Pokémon card sets.
 
-- **`!profile [user]`**  
-  Displays the profile and collection of the specified user.
+- **`/profile [user]`**  
+  Displays the profile and favorite card of the specified user.
 
 ### Trading Commands
 
-- **`!trade [user] [card index]`**  
-  Initiates a trade session with another user by specifying which card you want to trade.
+- **`/trade [user] [your-card] [their-card]`**  
+  Initiates a trade session with another user by specifying which card you want to trade and which you want to receive. The cards are referenced by their names. (e.g."Pikachu")
 
-- **`!confirmtrade`**  
+- **`/confirmtrade`**  
   Confirms an ongoing trade.
 
-- **`!canceltrade`**  
+- **`/canceltrade`**  
   Cancels an active trade session.
 
 ### Administrative Commands
 
-- **`!unlock [set ID]`**  
-  Unlocks a specific Pokémon card set to allow pulls again. *(Admin only)*
+- **`/lock [set-id]`**  
+  Locks a specific Pokémon card set to prevent cards from being pulled. *(Admin only)*
 
-- **`!lock [set ID]`**  
-  Locks a specific set to prevent cards from being pulled. *(Admin only)*
+- **`/unlock [set-id]`**  
+  Unlocks a specific set to allow pulls again. *(Admin only)*
 
-- **`!restart`**  
+- **`/restart`**  
   Restarts the bot. *(Admin only)*
 
-- **`!turnon` / `!turnoff`**  
+- **`/turnon` / `/turnoff`**  
   Turns the bot on or off, enabling or disabling command processing. *(Admin only)*
 
-- **`!stats`**  
+- **`/stats`**  
   Displays various statistics about the bot’s usage and performance. *(Admin only)*
 
-For a full list of commands, type `!help` in Discord.
+For a full list of commands, type `/help` in Discord.
 
 ### Help Command
 
-The `HelpCommand` module sends a rich embed listing all available commands and their usage. This module is automatically registered along with other commands during the bot`s startup.
+The `HelpCommandHandler` module sends a rich embed listing all available commands and their usage. This module is automatically registered along with other commands during the bot`s startup.
 
 ---
 
@@ -165,13 +171,13 @@ The `HelpCommand` module sends a rich embed listing all available commands and t
 
 ### Bot Initialization
 
-The bot is initialized in the `Bot` class, which sets up logging, connects to Discord, and listens for messages with the `!` prefix. Commands are executed using the Discord.NET command framework.
+The bot is initialized in the `Bot` class, which sets up logging, connects to Discord, and listens for registered slash commands. Commands are executed using the Discord.NET command framework.
 
 ### Command Handling
 
-Commands are processed in the `HandleCommandAsync` method, which ensures:
-- Messages from other bots are ignored.
-- Only messages with the `!` prefix are processed.
+Commands are processed in the `HandleSlashCommandAsync` method, which ensures:
+- Commands are handled by their dedicated handlers.
+- Only Handles valid commands.
 - Errors are logged and reported back in the Discord channel.
 
 
@@ -189,16 +195,10 @@ Contributions are welcome! If you have ideas or improvements:
 
 ---
 
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
----
-
 ## Acknowledgements
 
-- [Pokémon TCG API](https://pokemontcg.io/) for providing the card data.
-- [Discord.NET](https://github.com/discord-net/Discord.Net) for the Discord API library.
+- [Pokémon TCG API][api-url] for providing the card data.
+- [Discord.NET][discord-dotnet] for the Discord API library.
 - The open-source community for support and contributions.
 
 ---
