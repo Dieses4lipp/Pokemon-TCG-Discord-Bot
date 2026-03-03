@@ -34,21 +34,21 @@ public static class ProfileCommandHandler
         }
 
         var collection = await CardStorage.LoadUserCardsAsync(user.Id);
-
+        
         var embed = new EmbedBuilder()
             .WithTitle($"📊 {user.Username}'s Trainer Profile")
             .WithThumbnailUrl(user.GetAvatarUrl() ?? user.GetDefaultAvatarUrl())
-            .AddField("📦 Packs Pulled", collection.PacksPulled, true)
-            .AddField("📇 Total Saved", collection.Cards?.Count ?? 0, true)
-            .AddField("✨ Unique Cards", collection.DifferentCardsSaved, true)
-            .AddField("🤝 Cards Traded", collection.CardsTraded, true)
+            .AddField("📦 Packs Pulled", collection.PacksPulled.ToString() ?? "0", true)
+    .AddField("📇 Total Saved", (collection.Cards?.Count ?? 0).ToString() ?? "0", true)
+    .AddField("✨ Unique Cards", collection.DifferentCardsSaved.ToString() ?? "0", true)
+    .AddField("🤝 Cards Traded", collection.CardsTraded.ToString() ?? "0", true)
             .WithColor(Color.Blue)
             .WithCurrentTimestamp();
 
-        if (collection.FavoriteCard != null)
+        if (collection.FavoriteCard != null && !string.IsNullOrEmpty(collection.FavoriteCard.Name))
         {
             embed.AddField("⭐Favorite Card⭐", collection.FavoriteCard.Name)
-                .WithImageUrl($"{collection.FavoriteCard.Image}/low.png");
+                 .WithImageUrl($"{collection.FavoriteCard.Image}/low.png");
         }
         else
         {
