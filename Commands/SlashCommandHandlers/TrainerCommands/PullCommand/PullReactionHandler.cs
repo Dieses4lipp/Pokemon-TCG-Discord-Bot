@@ -87,8 +87,8 @@ public static class PullReactionHandler
         var buttons = new ComponentBuilder()
             .WithButton("Previous", "prev_card", ButtonStyle.Secondary)
             .WithButton("Next", "next_card", ButtonStyle.Secondary)
-            .WithButton(isSaved ? "Saved" : "Save", "save_card",
-                        isSaved ? ButtonStyle.Success : ButtonStyle.Primary,
+            .WithButton(isSaved ? "Saved" : "💾 Save Card", "save_card",
+                        isSaved ? ButtonStyle.Success : ButtonStyle.Success,
                         disabled: isSaved)
             .Build();
 

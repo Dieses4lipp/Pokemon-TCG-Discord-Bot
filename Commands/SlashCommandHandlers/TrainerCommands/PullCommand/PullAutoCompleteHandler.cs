@@ -6,17 +6,24 @@ using Newtonsoft.Json;
 
 namespace DiscordBot.Commands.SlashCommandHandlers.TrainerCommands.PullCommand;
 
+/// <summary>
+///     A class that contains the Handler for an autocomplete interaction of the /pull command
+/// </summary>
 public static class PullAutocompleteHandler
 {
+    /// <summary>
+    ///     Handles the auto complete interaction
+    /// </summary>
+    /// <param name="interaction">
+    ///     <inheritdoc cref="SocketAutocompleteInteraction" path="/summary"/>
+    /// </param>
     public static async Task Handle(SocketAutocompleteInteraction interaction)
     {
-        // Get what the user is typing
         var userInput = interaction.Data.Current.Value?.ToString() ?? "";
 
         try
         {
-            // Fetch your data (using your existing HttpClient)
-            string response = await CommandHandler._httpClient.GetStringAsync(CommandHandler.SetsApiUrl + "?pagination:itemsPerPage=50");
+            string response = await CommandHandler._httpClient.GetStringAsync(CommandHandler.SetsApiUrl);
             var setsList = JsonConvert.DeserializeObject<List<Set>>(response);
 
             if (setsList == null)
@@ -25,15 +32,14 @@ public static class PullAutocompleteHandler
                 return;
             }
 
-            // Filter and create suggestions
             var suggestions = setsList
                 .Where(s => s.Name.Contains(userInput, StringComparison.OrdinalIgnoreCase))
                 .OrderBy(s => s.Name)
                 .Select(s => new AutocompleteResult(s.Name, s.Id))
+                // Option limit
                 .Take(25)
                 .ToList();
 
-            // Respond to the interaction with the suggestions
             await interaction.RespondAsync(suggestions);
         }
         catch (Exception ex)
