@@ -15,7 +15,8 @@ public static class SlashCommandBuilders
                     "set-id",
                     ApplicationCommandOptionType.String,
                     "The ID of the set to pull from.",
-                    isRequired: true
+                    isRequired: true,
+                    isAutocomplete: true
                 );
 
     public static SlashCommandBuilder HelpCommand() =>

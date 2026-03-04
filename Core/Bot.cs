@@ -15,6 +15,7 @@ using DiscordBot.Commands.SlashCommandHandlers.TrainerCommands.ProfileCommand;
 using DiscordBot.Commands.SlashCommandHandlers.TrainerCommands.PullCommand;
 using DiscordBot.Commands.SlashCommandHandlers.TrainerCommands.RestartCommand;
 using DiscordBot.Commands.SlashCommandHandlers.TrainerCommands.SetsCommand;
+using Microsoft.VisualBasic;
 
 namespace DiscordBot.Core;
 
@@ -203,7 +204,7 @@ public class Bot(DiscordSocketClient client)
                     break;
 
                 case "sets":
-                    await SetsCommandHandler.Handle(cmd);
+                    await TestSetsCommandHandler.Handle(cmd);
                     break;
             }
         }
@@ -238,6 +239,7 @@ public class Bot(DiscordSocketClient client)
         _client.JoinedGuild += async (guild) =>
             await RegisterGuildCommands(guild);
 
+        _client.AutocompleteExecuted += HandleAutoCompleteAsync;
         _client.SlashCommandExecuted += HandleSlashCommandAsync;
         _client.ButtonExecuted += async (component) =>
             await HandleButtonPressAsync(component);
@@ -245,6 +247,16 @@ public class Bot(DiscordSocketClient client)
         Console.WriteLine("Starting bot...");
         await _client.LoginAsync(TokenType.Bot, botToken);
         await _client.StartAsync();
+    }
+
+    public async Task HandleAutoCompleteAsync(SocketAutocompleteInteraction interaction)
+    {
+        switch (interaction.Data.CommandName)
+        {
+            case "pull":
+                await PullAutocompleteHandler.Handle(interaction);
+                break;
+        }
     }
 
     /// <summary>
