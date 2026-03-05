@@ -11,13 +11,28 @@ namespace DiscordBot.Commands.SlashCommandHandlers.TrainerCommands.PullCommand;
 /// </summary>
 public static class PullAutocompleteHandler
 {
+    public static async Task Handle(SocketAutocompleteInteraction interaction)
+    {
+        // Distinguishes between option field names
+        switch (interaction.Data.Current.Name)
+        {
+            case "set-id":
+                await HandleSetAutoComplete(interaction);
+                break;
+
+            case "language":
+                await HandleLanguageAutoComplete(interaction);
+                break;
+        }
+    }
+
     /// <summary>
     ///     Handles the auto complete interaction
     /// </summary>
     /// <param name="interaction">
     ///     <inheritdoc cref="SocketAutocompleteInteraction" path="/summary"/>
     /// </param>
-    public static async Task Handle(SocketAutocompleteInteraction interaction)
+    public static async Task HandleSetAutoComplete(SocketAutocompleteInteraction interaction)
     {
         var userInput = interaction.Data.Current.Value?.ToString() ?? "";
 
@@ -41,6 +56,27 @@ public static class PullAutocompleteHandler
                 .ToList();
 
             await interaction.RespondAsync(suggestions);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Autocomplete Error: {ex.Message}");
+        }
+    }
+
+    public static async Task HandleLanguageAutoComplete(SocketAutocompleteInteraction interaction)
+    {
+        try
+        {
+            AutocompleteResult[] availableLanguages = [
+                new("English", "en"),
+                new("French", "fr"),
+                new("Spanish", "es"),
+                new("Italian", "it"),
+                new("Portuguese", "pt"),
+                new("German", "de"),
+            ];
+
+            await interaction.RespondAsync(availableLanguages);
         }
         catch (Exception ex)
         {

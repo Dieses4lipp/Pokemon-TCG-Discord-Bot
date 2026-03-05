@@ -30,6 +30,12 @@ public static class PullCommandHandler
 
         var setId = command.Data.Options.FirstOrDefault(o => o.Name == "set-id")?.Value as string;
 
+        var langOption = command.Data.Options.FirstOrDefault(o => o.Name == "language");
+
+        var lang = "en";
+        if (langOption != null)
+            lang = langOption.Value as string;
+
         // Safety check for null or locked sets
         if (string.IsNullOrWhiteSpace(setId) || CommandHandler.LockedSets.Contains(setId))
         {
@@ -40,7 +46,7 @@ public static class PullCommandHandler
         try
         {
             // Fetch cards (Cache these in a real production environment to save API hits!)
-            var allCards = await CommandHandler.GetRandomCards(250, setId);
+            var allCards = await CommandHandler.GetRandomCards(250, setId, lang!);
 
             if (allCards == null || allCards.Count == 0)
             {

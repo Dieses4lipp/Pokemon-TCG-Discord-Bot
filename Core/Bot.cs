@@ -15,7 +15,6 @@ using DiscordBot.Commands.SlashCommandHandlers.TrainerCommands.ProfileCommand;
 using DiscordBot.Commands.SlashCommandHandlers.TrainerCommands.PullCommand;
 using DiscordBot.Commands.SlashCommandHandlers.TrainerCommands.RestartCommand;
 using DiscordBot.Commands.SlashCommandHandlers.TrainerCommands.SetsCommand;
-using Microsoft.VisualBasic;
 
 namespace DiscordBot.Core;
 
@@ -133,6 +132,8 @@ public class Bot(DiscordSocketClient client)
             "inv_prev_card" => InventoryReactionHandler.HandleMoveCardIndex(component, -1),
             "inv_fav_card" => InventoryReactionHandler.HandleFavoriteCard(component),
             "inv_delete_card" => InventoryReactionHandler.HandleDeleteCard(component),
+            //"prev_set" => SetsReactionHandler.HandleMoveIndex(component, -1),
+            //"next_set" => SetsReactionHandler.HandleMoveIndex(component, 1),
             _ => Task.CompletedTask,
         });
     }
@@ -204,7 +205,7 @@ public class Bot(DiscordSocketClient client)
                     break;
 
                 case "sets":
-                    await TestSetsCommandHandler.Handle(cmd);
+                    await SetsCommandHandler.Handle(cmd);
                     break;
             }
         }
