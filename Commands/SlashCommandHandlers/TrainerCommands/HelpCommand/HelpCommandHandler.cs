@@ -31,7 +31,7 @@ public class HelpCommandHandler
             "`/pull [set-id]` - Open a pack of 9 cards from a specific set.\n" +
             "`/inventory` - Browse your saved cards and manage favorites.\n" +
             "`/profile [user]` - View your own or another trainer's collection stats.\n" +
-            "`/sets` - **View all available Pokémon sets and find their specific IDs.**\n" +
+            "`/sets` - View all available Pokémon sets and find their specific IDs.\n" +
             "`/stats` - View global bot statistics and uptime.")
 
         .AddField("🤝 Trading",

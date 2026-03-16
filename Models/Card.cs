@@ -39,5 +39,5 @@ public record Card
     /// <summary>
     ///     Gets or sets the image urls without "/low.png" or "/high.png" suffix.
     /// </summary>
-    public string Image { get; set; } = default!;
+    public string? Image { get; set; }
 }

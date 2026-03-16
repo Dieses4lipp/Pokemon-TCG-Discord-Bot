@@ -19,8 +19,7 @@ public static class SetsCommandHandler
     /// </param>
     public static async Task Handle(SocketSlashCommand command)
     {
-        // Defer the response to give more time to process
-        await command.DeferAsync();
+        await command.DeferAsync(ephemeral: true);
 
         if (!CommandHandler.BotActive)
         {
@@ -32,8 +31,7 @@ public static class SetsCommandHandler
         {
             var loadingMessage = await command.FollowupAsync("⏳ Fetching latest Pokémon sets...");
 
-            // Fetches API Data
-            string response = await CommandHandler._httpClient.GetStringAsync(CommandHandler.SetsApiUrl);
+            string response = await CommandHandler._httpClient.GetStringAsync(CommandHandler.SetsApiUrl + "?pagination:page=1&pagination:itemsPerPage=25");
             var setsList = JsonConvert.DeserializeObject<List<Set>>(response);
 
             if (setsList == null || setsList.Count == 0)
@@ -42,39 +40,40 @@ public static class SetsCommandHandler
                 return;
             }
 
-            // Then use setsList directly:
             var sortedSets = setsList
-                .OrderByDescending(s => s.Name)
-                .Take(25)
+                .OrderBy(s => s.Name)
+                .Take(24)
                 .ToList();
 
-            var selectMenu = new SelectMenuBuilder()
-                .WithPlaceholder("Choose a set to see its ID")
-                .WithCustomId("set_selection_info")
-                .WithMinValues(1)
-                .WithMaxValues(1);
+            var embedBuilder = new EmbedBuilder()
+                .WithTitle("📂 Pokémon TCG Sets")
+                .WithDescription("Use these IDs with the `/pull` command!")
+                .WithColor(Color.Green)
+                .WithFooter("Showing the 25 most recent sets.")
+                .WithCurrentTimestamp();
+
+            // TODO: Increment page number for api calls
+            //var buttons = new ComponentBuilder()
+            //    .WithButton("Previous", "prev_set", ButtonStyle.Secondary)
+            //    .WithButton("Next", "next_set", ButtonStyle.Secondary)
+            //    .Build();
 
             foreach (var set in sortedSets)
             {
-                selectMenu.AddOption(set.Name, set.Id, $"| ID: {set.Id}");
+                embedBuilder.AddField(set.Name, $"`{set.Id}` \n", inline: true);
             }
-
-            var components = new ComponentBuilder().WithSelectMenu(selectMenu).Build();
-
-            var embed = new EmbedBuilder()
-                .WithTitle("📂 Pokémon TCG Sets")
-                .WithDescription("Select a set from the menu to view its unique **Set ID**. Use this ID with the `/pull` command!")
-                .WithColor(Color.Green)
-                .WithFooter("Showing the 25 most recent sets.")
-                .WithCurrentTimestamp()
-                .Build();
 
             await loadingMessage.ModifyAsync(msg =>
             {
                 msg.Content = "";
-                msg.Embed = embed;
-                msg.Components = components;
+                msg.Embed = embedBuilder.Build();
+                msg.Components = null;
             });
+        }
+        catch (ArgumentException ex)
+        {
+            Console.WriteLine($"Error building response embed: {ex.Message}");
+            await command.FollowupAsync("⚠️ An error occured while building the response message.");
         }
         catch (Exception ex)
         {

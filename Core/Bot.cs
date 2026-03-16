@@ -132,6 +132,8 @@ public class Bot(DiscordSocketClient client)
             "inv_prev_card" => InventoryReactionHandler.HandleMoveCardIndex(component, -1),
             "inv_fav_card" => InventoryReactionHandler.HandleFavoriteCard(component),
             "inv_delete_card" => InventoryReactionHandler.HandleDeleteCard(component),
+            //"prev_set" => SetsReactionHandler.HandleMoveIndex(component, -1),
+            //"next_set" => SetsReactionHandler.HandleMoveIndex(component, 1),
             _ => Task.CompletedTask,
         });
     }
@@ -238,6 +240,7 @@ public class Bot(DiscordSocketClient client)
         _client.JoinedGuild += async (guild) =>
             await RegisterGuildCommands(guild);
 
+        _client.AutocompleteExecuted += HandleAutoCompleteAsync;
         _client.SlashCommandExecuted += HandleSlashCommandAsync;
         _client.ButtonExecuted += async (component) =>
             await HandleButtonPressAsync(component);
@@ -245,6 +248,16 @@ public class Bot(DiscordSocketClient client)
         Console.WriteLine("Starting bot...");
         await _client.LoginAsync(TokenType.Bot, botToken);
         await _client.StartAsync();
+    }
+
+    public async Task HandleAutoCompleteAsync(SocketAutocompleteInteraction interaction)
+    {
+        switch (interaction.Data.CommandName)
+        {
+            case "pull":
+                await PullAutocompleteHandler.Handle(interaction);
+                break;
+        }
     }
 
     /// <summary>

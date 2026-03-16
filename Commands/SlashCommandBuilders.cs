@@ -15,7 +15,15 @@ public static class SlashCommandBuilders
                     "set-id",
                     ApplicationCommandOptionType.String,
                     "The ID of the set to pull from.",
-                    isRequired: true
+                    isRequired: true,
+                    isAutocomplete: true
+                )
+                .AddOption(
+                    "language",
+                    ApplicationCommandOptionType.String,
+                    "The language of displayed cards. (default is english)",
+                    isRequired: false,
+                    isAutocomplete: true
                 );
 
     public static SlashCommandBuilder HelpCommand() =>

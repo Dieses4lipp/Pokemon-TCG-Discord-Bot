@@ -12,7 +12,8 @@ namespace DiscordBot.Core;
 public static class CommandHandler
 {
     public static readonly HttpClient _httpClient = new();
-    public static readonly string ApiUrl = "https://api.tcgdex.net/v2/en/cards";
+    public static readonly string CardsApiUrl = "https://api.tcgdex.net/v2/en/cards";
+    public static readonly string ApiLangUrl = "https://api.tcgdex.net/v2/";
     public static readonly string SetsApiUrl = "https://api.tcgdex.net/v2/en/sets";
 
     /// <summary>
@@ -53,6 +54,8 @@ public static class CommandHandler
     ///     Indicates whether the bot is active and responding to commands.
     /// </summary>
     public static bool BotActive = true;
+
+    public static int SetsSessionIndex = 0;
 
     /// <summary>
     ///     The number of cards that have been pulled by all users.
@@ -110,7 +113,8 @@ public static class CommandHandler
         return new EmbedBuilder()
             .WithTitle($"{card.Name} ({current}/{total})")
             .WithDescription($"Rarity: {card.Rarity ?? "unknown"}")
-            .WithImageUrl($"{card.Image}/low.png")
+            .WithImageUrl($"{card.Image}/low.png" ??
+                "https://assets.tcgdex.net/en/swsh/swsh3/136/low.png") // TODO: Add real placeholder image
             .WithColor(Color.Blue)
             .Build();
     }
@@ -127,10 +131,12 @@ public static class CommandHandler
     /// <returns>
     ///     A task that returns a list of <see cref="Card"/> objects.
     /// </returns>
-    public static async Task<List<Card>> GetRandomCards(int count, string setId)
+    public static async Task<List<Card>> GetRandomCards(int count, string setId, string language)
     {
         var random = new Random();
-        string requestUrl = string.IsNullOrEmpty(setId) ? ApiUrl : $"{SetsApiUrl}/{setId}";
+        //string requestUrl = string.IsNullOrEmpty(setId) ? CardsApiUrl : $"{SetsApiUrl}/{setId}";
+
+        string requestUrl = $"{ApiLangUrl}{language}/sets/{setId}";
 
         try
         {
@@ -201,8 +207,9 @@ public static class CommandHandler
             {
                 try
                 {
+                    var url = $"{ApiLangUrl}{language}/cards/{id}";
                     // Fetch detailed card. Some APIs return an object wrapper; handle both.
-                    var detailedResponse = await _httpClient.GetStringAsync($"{ApiUrl}/{id}");
+                    var detailedResponse = await _httpClient.GetStringAsync(url);
                     var detailToken = JToken.Parse(detailedResponse);
 
                     // find inner object with id/name/images or fall back to top-level
