@@ -100,4 +100,36 @@ public static class PullReactionHandler
             m.Components = buttons;
         });
     }
+
+    /// <summary>
+    ///     Handles the "Open Pack" button click to reveal the cards.
+    /// </summary>
+    /// <param name="component">
+    ///     The component interaction triggered by the user clicking the "Open Pack" button.
+    /// </param>
+    public static async Task HandleOpenPackAsync(SocketMessageComponent component)
+    {
+        // Defer the response to give more time to process
+        await component.DeferAsync(ephemeral: true);
+
+        if (!ActiveSessions.TryGetValue(component.Message.Id, out var session))
+            return;
+        if (component.User.Id != session.UserId)
+            return;
+
+        var embed = CommandHandler.BuildCardEmbed(session.Cards[0], 1, session.Cards.Count);
+
+        var buttons = new ComponentBuilder()
+            .WithButton("Previous", "prev_card", ButtonStyle.Secondary)
+            .WithButton("Next", "next_card", ButtonStyle.Secondary)
+            .WithButton("💾 Save Card", "save_card", ButtonStyle.Success)
+            .Build();
+
+        await component.ModifyOriginalResponseAsync(m =>
+        {
+            m.Embed = embed;
+            m.Components = buttons;
+            m.Attachments = new Optional<IEnumerable<FileAttachment>>(Array.Empty<FileAttachment>());
+        });
+    }
 }
