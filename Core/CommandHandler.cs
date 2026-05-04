@@ -110,11 +110,21 @@ public static class CommandHandler
     /// </returns>
     public static Embed BuildCardEmbed(Card card, int current, int total)
     {
+        double marketPrice = 
+            card.Pricing?.TcgPlayer?.Market ?? 
+            card.Pricing?.TcgPlayer?.Low ?? 
+            card.Pricing?.Cardmarket?.Avg ?? 
+            0.50;
+        var projectRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\");
+        var defaultImage = Path.Combine(projectRoot, $@"Assets\sets_covers\default.jpg");
+        string cardImageUrl = string.IsNullOrWhiteSpace(card.Image) 
+            ? defaultImage
+            : $"{card.Image}/low.png";
+
         return new EmbedBuilder()
             .WithTitle($"{card.Name} ({current}/{total})")
-            .WithDescription($"Rarity: {card.Rarity ?? "unknown"}")
-            .WithImageUrl($"{card.Image}/low.png" ??
-                "https://assets.tcgdex.net/en/swsh/swsh3/136/low.png") // TODO: Add real placeholder image
+            .WithDescription($"Rarity: {card.Rarity ?? "unknown"}\nEstimated Value: **${marketPrice:F2}**")
+            .WithImageUrl(cardImageUrl)
             .WithColor(Color.Blue)
             .Build();
     }

@@ -125,9 +125,11 @@ public class Bot(DiscordSocketClient client)
     {
         await (component.Data.CustomId switch
         {
+            "open_pack" => PullReactionHandler.HandleOpenPackAsync(component),
             "next_card" => PullReactionHandler.HandleMoveCardIndex(component, 1),
             "prev_card" => PullReactionHandler.HandleMoveCardIndex(component, -1),
             "save_card" => PullReactionHandler.HandleSaveCardAsync(component),
+            "sell_pack" => PullReactionHandler.HandleSellPackAsync(component),
             "inv_next_card" => InventoryReactionHandler.HandleMoveCardIndex(component, 1),
             "inv_prev_card" => InventoryReactionHandler.HandleMoveCardIndex(component, -1),
             "inv_fav_card" => InventoryReactionHandler.HandleFavoriteCard(component),

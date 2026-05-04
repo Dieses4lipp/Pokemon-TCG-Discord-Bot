@@ -31,6 +31,11 @@ public class UserCardCollection
     public int DifferentCardsSaved => Cards.Select(c => c.Name).Distinct().Count();
 
     /// <summary>
+    ///     Gets or sets the user's current balance Balance earned from selling cards.
+    /// </summary>
+    public double Balance { get; set; } = 0.0;
+
+    /// <summary>
     ///     Gets or sets the user's favorite card, if any.
     /// </summary>
     public Card? FavoriteCard { get; set; }

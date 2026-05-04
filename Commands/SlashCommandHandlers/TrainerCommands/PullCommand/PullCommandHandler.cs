@@ -73,17 +73,56 @@ public static class PullCommandHandler
                 selectedCardList.Add(cardToAdd);
             }
 
-            var embed = CommandHandler.BuildCardEmbed(selectedCardList[0], 1, selectedCardList.Count);
+            var projectRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\");
+            var setFolder = Path.Combine(projectRoot, $@"Assets\sets_covers\{setId}");
 
-            var buttons = new ComponentBuilder()
-                .WithButton("Previous", "prev_card", ButtonStyle.Secondary)
-                .WithButton("Next", "next_card", ButtonStyle.Secondary)
-                .WithButton("💾 Save Card", "save_card", ButtonStyle.Success)
+            string packImagePath;
+
+            if (Directory.Exists(setFolder))
+            {
+                var coverImages = Directory.GetFiles(setFolder, "*.jpg").ToList();
+
+
+                if (coverImages.Count > 0)
+                {
+                    //pick a random cover image from the set folder
+                    packImagePath = coverImages[random.Next(coverImages.Count)];
+                }
+                else
+                {
+                    // Fallback to default.jpg
+                    packImagePath = Path.Combine(projectRoot, @"Assets\sets_covers\default.jpg");
+                }
+            }
+            else
+            {
+                packImagePath = Path.Combine(projectRoot, @"Assets\sets_covers\default.jpg");
+            }
+
+            if (!File.Exists(packImagePath))
+            {
+                await command.FollowupAsync($"❌ Pack image not found for set: {setId}", ephemeral: true);
+                return;
+            }
+
+            var packEmbed = new EmbedBuilder()
+                .WithTitle($"")
+                .WithImageUrl($"attachment://{Path.GetFileName(packImagePath)}")
+                .WithColor(Color.Blue)
                 .Build();
 
-            var response = await command.FollowupAsync(ephemeral: true, components: buttons, embed: embed);
+            var openPackButton = new ComponentBuilder()
+                .WithButton("Open Pack", "open_pack", ButtonStyle.Primary, new Emoji("🎁"))
+                .Build();
 
-            // Session management
+            var response = await command.FollowupWithFileAsync(
+                packImagePath,
+                embed: packEmbed,
+                ephemeral: true,
+                components: openPackButton
+            );
+
+            // Store pack session with cards ready to be revealed
             PullReactionHandler.ActiveSessions[response.Id] = new PackSession(response.Id, command.User.Id, selectedCardList);
 
             // Update Stats
