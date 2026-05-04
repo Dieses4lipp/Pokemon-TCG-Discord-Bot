@@ -115,9 +115,10 @@ public static class CommandHandler
             card.Pricing?.TcgPlayer?.Low ?? 
             card.Pricing?.Cardmarket?.Avg ?? 
             0.50;
-
+        var projectRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\");
+        var defaultImage = Path.Combine(projectRoot, $@"Assets\sets_covers\default.jpg");
         string cardImageUrl = string.IsNullOrWhiteSpace(card.Image) 
-            ? "https://raw.githubusercontent.com/Dieses4lipp/Pokemon-TCG-Discord-Bot/main/Assets/sets_covers/default.jpg" // You can change this to any default image you prefer
+            ? defaultImage
             : $"{card.Image}/low.png";
 
         return new EmbedBuilder()
