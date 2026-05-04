@@ -110,43 +110,22 @@ public static class CommandHandler
     /// </returns>
     public static Embed BuildCardEmbed(Card card, int current, int total)
     {
-        var embedBuilder = new EmbedBuilder()
+        double marketPrice = 
+            card.Pricing?.TcgPlayer?.Market ?? 
+            card.Pricing?.TcgPlayer?.Low ?? 
+            card.Pricing?.Cardmarket?.Avg ?? 
+            0.50;
+
+        string cardImageUrl = string.IsNullOrWhiteSpace(card.Image) 
+            ? "https://raw.githubusercontent.com/Dieses4lipp/Pokemon-TCG-Discord-Bot/main/Assets/sets_covers/default.jpg" // You can change this to any default image you prefer
+            : $"{card.Image}/low.png";
+
+        return new EmbedBuilder()
             .WithTitle($"{card.Name} ({current}/{total})")
-            .WithImageUrl($"{card.Image}/low.png" ??
-                "https://assets.tcgdex.net/en/swsh/swsh3/136/low.png")
-            .WithColor(Color.Blue);
-
-        // Build description with rarity and pricing
-        var description = $"**Rarity:** {card.Rarity ?? "unknown"}";
-
-        // Add market value if available
-        if (card.Pricing != null)
-        {
-            var priceInfo = new List<string>();
-
-            if (card.Pricing.Cardmarket != null && card.Pricing.Cardmarket.Avg.HasValue)
-            {
-                var avg = card.Pricing.Cardmarket.Avg.Value;
-                var unit = card.Pricing.Cardmarket.Unit ?? "EUR";
-                priceInfo.Add($"Cardmarket: {avg:F2} {unit}");
-            }
-
-            if (card.Pricing.TcgPlayer != null && card.Pricing.TcgPlayer.Market.HasValue)
-            {
-                var market = card.Pricing.TcgPlayer.Market.Value;
-                var unit = card.Pricing.TcgPlayer.Unit ?? "USD";
-                priceInfo.Add($"TCGPlayer: {market:F2} {unit}");
-            }
-
-            if (priceInfo.Count > 0)
-            {
-                description += "\n\n**Market Value:**\n" + string.Join("\n", priceInfo);
-            }
-        }
-
-        embedBuilder.WithDescription(description);
-
-        return embedBuilder.Build();
+            .WithDescription($"Rarity: {card.Rarity ?? "unknown"}\nEstimated Value: **${marketPrice:F2}**")
+            .WithImageUrl(cardImageUrl)
+            .WithColor(Color.Blue)
+            .Build();
     }
 
     /// <summary>

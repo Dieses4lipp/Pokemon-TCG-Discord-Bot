@@ -34,7 +34,8 @@ public static class PullReactionHandler
         var disabledButtons = new ComponentBuilder()
             .WithButton("Previous", "prev_card", ButtonStyle.Secondary)
             .WithButton("Next", "next_card", ButtonStyle.Secondary)
-            .WithButton("Saved!", "save_card", ButtonStyle.Success, disabled: true)
+            .WithButton("💾", "save_card", ButtonStyle.Success, disabled: true)
+            .WithButton("💵", "sell_pack", ButtonStyle.Danger)
             .Build();
 
         Card cardToSave = session.Cards[session.CurrentIndex];
@@ -44,7 +45,7 @@ public static class PullReactionHandler
 
         if (session.SavedCardIdentifiers.Contains(cardIdentifier))
         {
-            await component.UpdateAsync(m => m.Components = disabledButtons);
+            await component.ModifyOriginalResponseAsync(m => m.Components = disabledButtons);
             return;
         }
 
@@ -87,9 +88,10 @@ public static class PullReactionHandler
         var buttons = new ComponentBuilder()
             .WithButton("Previous", "prev_card", ButtonStyle.Secondary)
             .WithButton("Next", "next_card", ButtonStyle.Secondary)
-            .WithButton(isSaved ? "Saved" : "💾 Save Card", "save_card",
-                        isSaved ? ButtonStyle.Success : ButtonStyle.Success,
+            .WithButton("💾", "save_card",
+                        isSaved ? ButtonStyle.Success : ButtonStyle.Primary,
                         disabled: isSaved)
+            .WithButton("💵", "sell_pack", ButtonStyle.Danger)
             .Build();
 
         var embed = CommandHandler.BuildCardEmbed(currentCard, session.CurrentIndex + 1, session.Cards.Count);
@@ -122,7 +124,8 @@ public static class PullReactionHandler
         var buttons = new ComponentBuilder()
             .WithButton("Previous", "prev_card", ButtonStyle.Secondary)
             .WithButton("Next", "next_card", ButtonStyle.Secondary)
-            .WithButton("💾 Save Card", "save_card", ButtonStyle.Success)
+            .WithButton("💾", "save_card", ButtonStyle.Primary)
+            .WithButton("💵", "sell_pack", ButtonStyle.Danger)
             .Build();
 
         await component.ModifyOriginalResponseAsync(m =>
@@ -131,5 +134,59 @@ public static class PullReactionHandler
             m.Components = buttons;
             m.Attachments = new Optional<IEnumerable<FileAttachment>>(Array.Empty<FileAttachment>());
         });
+    }
+
+    /// <summary>
+    ///     Handles the "Sell Pack" button click to bulk sell unsaved cards left in the pack.
+    /// </summary>
+    /// <param name="component">
+    ///     The component interaction triggered by the user.
+    /// </param>
+    public static async Task HandleSellPackAsync(SocketMessageComponent component)
+    {
+        await component.DeferAsync(ephemeral: true);
+
+        if (!ActiveSessions.TryGetValue(component.Message.Id, out var session))
+            return;
+        if (component.User.Id != session.UserId)
+            return;
+
+        double totalEarned = 0;
+        int cardsSold = 0;
+
+        foreach (var card in session.Cards)
+        {
+            var identifier = $"{card.Name}_{card.Rarity}";
+            if (!session.SavedCardIdentifiers.Contains(identifier))
+            {
+                double marketPrice = 
+                    card.Pricing?.TcgPlayer?.Market ?? 
+                    card.Pricing?.TcgPlayer?.Low ?? 
+                    card.Pricing?.Cardmarket?.Avg ?? 
+                    0.50;
+
+                totalEarned += marketPrice;
+                cardsSold++;
+            }
+        }
+
+        UserCardCollection collection = await CardStorage.LoadUserCardsAsync(session.UserId);
+        collection.Balance += totalEarned;
+        await CardStorage.SaveUserCardsAsync(collection);
+
+        Console.WriteLine($"[Sell Pack] User {component.User.Username} sold {cardsSold} cards for a total of {totalEarned:F2}! New Balance: {collection.Balance:F2}");
+
+        var buttons = new ComponentBuilder()
+            .WithButton("Pack Sold", "disabled_sell", ButtonStyle.Secondary, disabled: true)
+            .Build();
+
+        ActiveSessions.Remove(component.Message.Id);
+
+        await component.ModifyOriginalResponseAsync(m =>
+        {
+            m.Components = buttons;
+        });
+
+        await component.FollowupAsync($"💵 You sold {cardsSold} unsaved cards for **${totalEarned:F2}**!\nYour new balance is **${collection.Balance:F2}**.", ephemeral: true);
     }
 }
