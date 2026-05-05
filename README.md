@@ -197,7 +197,7 @@ Contributions are welcome! If you have ideas or improvements:
 
 ## Acknowledgements
 
-- [Pokémon TCG API][api-url] for providing the card data.
+- [TCGdex][api-url] for providing the card data.
 - [Discord.NET][discord-dotnet] for the Discord API library.
 - The open-source community for support and contributions.
 
