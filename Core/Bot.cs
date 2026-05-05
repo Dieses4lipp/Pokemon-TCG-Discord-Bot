@@ -133,7 +133,7 @@ public class Bot(DiscordSocketClient client)
             "inv_next_card" => InventoryReactionHandler.HandleMoveCardIndex(component, 1),
             "inv_prev_card" => InventoryReactionHandler.HandleMoveCardIndex(component, -1),
             "inv_fav_card" => InventoryReactionHandler.HandleFavoriteCard(component),
-            "inv_delete_card" => InventoryReactionHandler.HandleDeleteCard(component),
+            "inv_sell_card" => InventoryReactionHandler.HandleSellCard(component),
             //"prev_set" => SetsReactionHandler.HandleMoveIndex(component, -1),
             //"next_set" => SetsReactionHandler.HandleMoveIndex(component, 1),
             _ => Task.CompletedTask,
