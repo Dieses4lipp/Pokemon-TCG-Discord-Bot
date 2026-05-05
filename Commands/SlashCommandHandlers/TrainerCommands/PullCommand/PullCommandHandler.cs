@@ -27,7 +27,6 @@ public static class PullCommandHandler
             await command.FollowupAsync("💤 Bot is currently inactive.", ephemeral: true);
             return;
         }
-
         var setId = command.Data.Options.FirstOrDefault(o => o.Name == "set-id")?.Value as string;
 
         var langOption = command.Data.Options.FirstOrDefault(o => o.Name == "language");
@@ -105,6 +104,21 @@ public static class PullCommandHandler
                 return;
             }
 
+            const double packCost = 5.0;
+            var userCollection = await CardStorage.LoadUserCardsAsync(command.User.Id);
+
+            if (userCollection.Balance < packCost)
+            {
+                await command.FollowupAsync(
+                    $"❌ **Insufficient balance!**\n\n" +
+                    $"Pack cost: **{packCost:F2} EUR**\n" +
+                    $"Your balance: **{userCollection.Balance:F2} EUR**\n" +
+                    $"Missing: **{(packCost - userCollection.Balance):F2} EUR**\n\n" +
+                    $"💡 Sell some cards to earn more credits!",
+                    ephemeral: true);
+                return;
+            }
+
             var packEmbed = new EmbedBuilder()
                 .WithTitle($"")
                 .WithImageUrl($"attachment://{Path.GetFileName(packImagePath)}")
@@ -126,9 +140,10 @@ public static class PullCommandHandler
             PullReactionHandler.ActiveSessions[response.Id] = new PackSession(response.Id, command.User.Id, selectedCardList);
 
             // Update Stats
-            var userCollection = await CardStorage.LoadUserCardsAsync(command.User.Id);
             userCollection.PacksPulled++;
             CommandHandler.PullCount++;
+            // Deduct pack cost
+            userCollection.Balance -= packCost;
             await CardStorage.SaveUserCardsAsync(userCollection);
         }
         catch (Exception ex)

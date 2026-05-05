@@ -38,32 +38,52 @@ public static class InventoryReactionHandler
     }
 
     /// <summary>
-    ///     Handles the deletion of a card from the user's collection in response to a component interaction.
+    ///     Handles the selling of a card from the user's collection in response to a component interaction.
     /// </summary>
     /// <param name="component">
-    ///     The component representing the user's interaction that initiates the card deletion process.
+    ///     The component representing the user's interaction that initiates the card selling process.
     /// </param>
-    public static async Task HandleDeleteCard(SocketMessageComponent component)
+    public static async Task HandleSellCard(SocketMessageComponent component)
     {
         // Defer the response to give more time to process
         await component.DeferAsync(ephemeral: true);
 
         if (!ActiveSessions.TryGetValue(component.Message.Id, out var session)) return;
 
-        Card cardToDelete = session.Cards[session.CurrentIndex];
+        Card cardToSell = session.Cards[session.CurrentIndex];
         UserCardCollection collection = await CardStorage.LoadUserCardsAsync(session.UserId);
 
-        int removedCount = collection.Cards.RemoveAll(c => c.Name == cardToDelete.Name && c.Rarity == cardToDelete.Rarity);
+        // Calculate market value
+        double marketPrice = GetCardMarketValue(cardToSell);
+
+        if (marketPrice <= 0)
+        {
+            await component.FollowupAsync("❌ Unable to sell this card - no market price available.", ephemeral: true);
+            return;
+        }
+
+        int removedCount = collection.Cards.RemoveAll(c => c.Name == cardToSell.Name && c.Rarity == cardToSell.Rarity);
 
         if (removedCount > 0)
         {
-            // Clear favorite if deleted
-            if (IsFavorite(collection, cardToDelete))
+            // Clear favorite if sold
+            if (IsFavorite(collection, cardToSell))
             {
                 collection.FavoriteCard = null;
             }
 
+            // Add earnings to balance
+            collection.Balance += marketPrice;
             await CardStorage.SaveUserCardsAsync(collection);
+
+            // Show success message
+            await component.FollowupAsync(
+                $"✅ **Card sold!**\n\n" +
+                $"**{cardToSell.Name}** ({cardToSell.Rarity})\n" +
+                $"Earned: **{marketPrice:F2} EUR**\n" +
+                $"New balance: **{collection.Balance:F2} EUR**",
+                ephemeral: true);
+
             session.Cards.RemoveAt(session.CurrentIndex);
 
             if (session.Cards.Count == 0)
@@ -102,6 +122,35 @@ public static class InventoryReactionHandler
         UserCardCollection collection = await CardStorage.LoadUserCardsAsync(session.UserId);
 
         await UpdateInventoryUI(component, session, collection);
+    }
+
+    /// <summary>
+    ///     Gets the market value of a card, preferring Cardmarket prices.
+    /// </summary>
+    /// <param name="card">
+    ///     The card to get the market value for.
+    /// </param>
+    /// <returns>
+    ///     The market value of the card, or 0.0 if no price is available.
+    /// </returns>
+    private static double GetCardMarketValue(Card card)
+    {
+        if (card.Pricing == null)
+            return 0.0;
+
+        // Prefer Cardmarket average price
+        if (card.Pricing.Cardmarket?.Avg.HasValue == true)
+            return card.Pricing.Cardmarket.Avg.Value;
+
+        // Fallback to TCGPlayer market price
+        if (card.Pricing.TcgPlayer?.Market.HasValue == true)
+            return card.Pricing.TcgPlayer.Market.Value;
+
+        // Fallback to TCGPlayer low price
+        if (card.Pricing.TcgPlayer?.Low.HasValue == true)
+            return card.Pricing.TcgPlayer.Low.Value;
+
+        return 0.0;
     }
 
     /// <summary>
@@ -145,7 +194,7 @@ public static class InventoryReactionHandler
         var buttons = new ComponentBuilder()
             .WithButton("Previous", "inv_prev_card", ButtonStyle.Secondary)
             .WithButton("Next", "inv_next_card", ButtonStyle.Secondary)
-            .WithButton("🗑️", "inv_delete_card", ButtonStyle.Danger)
+            .WithButton("💰 Sell", "inv_sell_card", ButtonStyle.Danger)
             .WithButton("⭐", "inv_fav_card",
                 isFav ? ButtonStyle.Success : ButtonStyle.Primary,
                 disabled: isFav)

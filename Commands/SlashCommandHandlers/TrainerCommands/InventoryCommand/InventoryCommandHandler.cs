@@ -46,7 +46,7 @@ public static class InventoryCommandHandler
         var buttons = new ComponentBuilder()
                 .WithButton("Previous", "inv_prev_card", ButtonStyle.Secondary)
                 .WithButton("Next", "inv_next_card", ButtonStyle.Secondary)
-                .WithButton("🗑️", "inv_delete_card", ButtonStyle.Danger)
+                .WithButton("💵", "inv_sell_card", ButtonStyle.Danger)
                 .WithButton("⭐", "inv_fav_card",
                     isFavorite ? ButtonStyle.Success : ButtonStyle.Primary,
                     disabled: isFavorite)
