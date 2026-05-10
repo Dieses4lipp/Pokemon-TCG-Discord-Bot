@@ -39,12 +39,9 @@ public static class ConfirmTradeCommandHandler
         CommandHandler.ActiveTrades.Remove(session.SenderId);
         CommandHandler.ActiveTrades.Remove(session.ReceiverId);
 
-        // Remove the other person's reference to the session as well
-        ulong partnerId = (command.User.Id == session.SenderId) ? session.ReceiverId : session.SenderId;
-
         // Ensure the person confirming is the intended receiver
         if (session.ReceiverId != command.User.Id)
-        {
+        {       
             await command.FollowupAsync("⚠️ Only the person receiving the trade can confirm it.", ephemeral: true);
             return;
         }
@@ -53,26 +50,54 @@ public static class ConfirmTradeCommandHandler
         var senderCol = await CardStorage.LoadUserCardsAsync(session.SenderId);
         var receiverCol = await CardStorage.LoadUserCardsAsync(session.ReceiverId);
 
-        // Find the cards in their respective inventories We use value-based matching (Name + Rarity)
         var cardFromSender = senderCol.Cards.FirstOrDefault(c =>
             c.Name == session.CardToTrade.Name && c.Rarity == session.CardToTrade.Rarity);
 
-        var cardFromReceiver = receiverCol.Cards.FirstOrDefault(c =>
-            c.Name == session.CardToReceive.Name && c.Rarity == session.CardToReceive.Rarity);
-
-        // Final Ownership Check (Prevent "Double Spend")
-        if (cardFromSender == null || cardFromReceiver == null)
+        if (cardFromSender == null)
         {
-            await command.FollowupAsync("❌ One of the cards is no longer in the owner's inventory. Trade cancelled.");
+            await command.FollowupAsync("❌ The sender's card is no longer in their inventory. Trade cancelled.");
+            return;
+        }
+
+        Card? cardFromReceiver = null;
+        if (session.CardToReceive != null)
+        {
+            cardFromReceiver = receiverCol.Cards.FirstOrDefault(c =>
+                c.Name == session.CardToReceive.Name && c.Rarity == session.CardToReceive.Rarity);
+
+            if (cardFromReceiver == null)
+            {
+                await command.FollowupAsync("❌ The requested card is no longer in your inventory. Trade cancelled.");
+                return;
+            }
+        }
+
+        if (session.MoneyToReceive > 0 && receiverCol.Balance < session.MoneyToReceive)
+        {
+            await command.FollowupAsync("❌ You no longer have enough balance to complete this trade. Trade cancelled.");
             return;
         }
 
         // PERFORM THE SWAP
         senderCol.Cards.Remove(cardFromSender);
-        receiverCol.Cards.Remove(cardFromReceiver);
-
-        senderCol.Cards.Add(cardFromReceiver);
         receiverCol.Cards.Add(cardFromSender);
+
+        var senderReceivedText = string.Empty;
+
+        if (cardFromReceiver != null)
+        {
+            receiverCol.Cards.Remove(cardFromReceiver);
+            senderCol.Cards.Add(cardFromReceiver);
+            senderReceivedText += $"`{cardFromReceiver.Name}`\n";
+            CheckAndClearFavorite(receiverCol, cardFromReceiver);
+        }
+
+        if (session.MoneyToReceive > 0)
+        {
+            receiverCol.Balance -= session.MoneyToReceive;
+            senderCol.Balance += session.MoneyToReceive;
+            senderReceivedText += $"💰 {session.MoneyToReceive:F2}\n";
+        }
 
         // Update stats
         senderCol.CardsTraded++;
@@ -80,17 +105,16 @@ public static class ConfirmTradeCommandHandler
 
         // Clean up Favorites (If they traded away their favorite card)
         CheckAndClearFavorite(senderCol, cardFromSender);
-        CheckAndClearFavorite(receiverCol, cardFromReceiver);
 
         await CardStorage.SaveUserCardsAsync(senderCol);
         await CardStorage.SaveUserCardsAsync(receiverCol);
 
         var embed = new EmbedBuilder()
             .WithTitle("✅ Trade Successful!")
-            .WithDescription($"{MentionUtils.MentionUser(session.SenderId)} and {MentionUtils.MentionUser(session.ReceiverId)} have swapped cards.")
+            .WithDescription($"{MentionUtils.MentionUser(session.SenderId)} and {MentionUtils.MentionUser(session.ReceiverId)} have successfully traded.")
             .AddField("New Additions",
-                $"{MentionUtils.MentionUser(session.SenderId)} received `{cardFromReceiver.Name}`\n" +
-                $"{MentionUtils.MentionUser(session.ReceiverId)} received `{cardFromSender.Name}`")
+                $"{MentionUtils.MentionUser(session.SenderId)} received:\n{senderReceivedText}\n" +
+                $"{MentionUtils.MentionUser(session.ReceiverId)} received:\n`{cardFromSender.Name}`")
             .WithColor(Color.Green)
             .WithCurrentTimestamp()
             .Build();

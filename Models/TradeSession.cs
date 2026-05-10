@@ -13,9 +13,12 @@
 ///     The card being traded.
 /// </param>
 /// <param name="cardToReceive">
-///     The card being received.
+///     The card being received (can be null if trading strictly for money).
 /// </param>
-public class TradeSession(ulong senderId, ulong receiverId, Card cardToTrade, Card cardToReceive)
+/// <param name="moneyToReceive">
+///     The amount of money the sender wants to receive.
+/// </param>
+public class TradeSession(ulong senderId, ulong receiverId, Card cardToTrade, Card? cardToReceive, double moneyToReceive)
 {
     /// <summary>
     ///     Gets the ID of the user who is sending the card.
@@ -33,7 +36,12 @@ public class TradeSession(ulong senderId, ulong receiverId, Card cardToTrade, Ca
     public Card CardToTrade { get; } = cardToTrade;
 
     /// <summary>
-    ///     Gets the card that is being received.
+    ///     Gets the card that is being received, if any.
     /// </summary>
-    public Card CardToReceive { get; } = cardToReceive;
+    public Card? CardToReceive { get; } = cardToReceive;
+
+    /// <summary>
+    ///     Gets the amount of money requested, if any.
+    /// </summary>
+    public double MoneyToReceive { get; } = moneyToReceive;
 }
