@@ -30,6 +30,13 @@ public static class TradeCommandHandler
 
         var giveCardName = command.Data.Options.FirstOrDefault(c => c.Name == "give-card")?.Value as string;
         var receiveCardName = command.Data.Options.FirstOrDefault(c => c.Name == "receive-card")?.Value as string;
+        var receiveMoney = Convert.ToDouble(command.Data.Options.FirstOrDefault(c => c.Name == "receive-money")?.Value ?? 0.0);
+
+        if (string.IsNullOrEmpty(receiveCardName) && receiveMoney <= 0)
+        {
+            await command.FollowupAsync("❌ You must specify either a card to receive or an amount of money (or both).", ephemeral: true);
+            return;
+        }
 
         if (command.Data.Options.FirstOrDefault(x => x.Name == "user")?.Value is not SocketUser targetUser || targetUser.IsBot || targetUser.Id == command.User.Id)
         {
@@ -54,28 +61,43 @@ public static class TradeCommandHandler
             return;
         }
 
-        // Validate Card Ownership (Receiver)
         var receiverCollection = await CardStorage.LoadUserCardsAsync(targetUser.Id);
-        var cardToReceive = receiverCollection.Cards.FirstOrDefault(c => c.Name.Equals(receiveCardName, StringComparison.OrdinalIgnoreCase));
+        Card? cardToReceive = null;
 
-        if (cardToReceive == null)
+        if (!string.IsNullOrEmpty(receiveCardName))
         {
-            await command.FollowupAsync($"❌ {targetUser.Username} doesn't seem to own a `{receiveCardName}`.", ephemeral: true);
+            // Validate Card Ownership (Receiver)
+            cardToReceive = receiverCollection.Cards.FirstOrDefault(c => c.Name.Equals(receiveCardName, StringComparison.OrdinalIgnoreCase));
+
+            if (cardToReceive == null)
+            {
+                await command.FollowupAsync($"❌ {targetUser.Username} doesn't seem to own a `{receiveCardName}`.", ephemeral: true);
+                return;
+            }
+        }
+
+        if (receiveMoney > 0 && receiverCollection.Balance < receiveMoney)
+        {
+            await command.FollowupAsync($"❌ {targetUser.Username} doesn't have enough balance `{receiveMoney}` to fulfill this trade.", ephemeral: true);
             return;
         }
 
         // Creates Session
-        var tradeSession = new TradeSession(command.User.Id, targetUser.Id, cardToGive, cardToReceive);
+        var tradeSession = new TradeSession(command.User.Id, targetUser.Id, cardToGive, cardToReceive, receiveMoney);
 
         // Maps both users to the same session object
         CommandHandler.ActiveTrades[command.User.Id] = tradeSession;
         CommandHandler.ActiveTrades[targetUser.Id] = tradeSession;
 
+        var requestingText = string.Empty;
+        if (cardToReceive != null) requestingText += $"`{cardToReceive.Name}`\n";
+        if (receiveMoney > 0) requestingText += $"💰 {receiveMoney:F2}";
+
         var embed = new EmbedBuilder()
             .WithTitle("🤝 Trade Proposal")
             .WithDescription($"{command.User.Mention} wants to trade with {targetUser.Mention}!")
             .AddField("Offering", $" `{cardToGive.Name}` ({cardToGive.Rarity})", true)
-            .AddField("Requesting", $"`{cardToReceive.Name}`", true)
+            .AddField("Requesting", requestingText, true)
             .WithFooter("Receiver must type /confirmtrade to finalize.")
             .WithColor(Color.Gold)
             .Build();

@@ -107,7 +107,13 @@ public static class SlashCommandBuilders
                 "receive-card",
                 ApplicationCommandOptionType.String,
                 "The name of the card you want to receive.",
-                isRequired: true
+                isRequired: false
+                )
+            .AddOption(
+                "receive-money",
+                ApplicationCommandOptionType.Number,
+                "The amount of money you want to receive.",
+                isRequired: false
                 );
 
     public static SlashCommandBuilder ConfirmTradeCommand() =>
