@@ -1,4 +1,6 @@
-﻿namespace DiscordBot.Models;
+﻿using DiscordBot.Events.Expedtion;
+
+namespace DiscordBot.Models;
 
 /// <summary>
 ///     Represents a collection of Pokémon cards for a specific user.
@@ -39,4 +41,9 @@ public class UserCardCollection
     ///     Gets or sets the user's favorite card, if any.
     /// </summary>
     public Card? FavoriteCard { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the active expedition for the user.
+    /// </summary>
+    public ActiveExpedition? ActiveExpedition { get; set; }
 }

@@ -26,6 +26,7 @@ public record Card
     }
     [JsonProperty("localId")]
     public string LocalId { get; set; } = default!;
+    
     /// <summary>
     ///     Gets or sets the name of the card.
     /// </summary>
@@ -40,6 +41,11 @@ public record Card
     ///     Gets or sets the image urls without "/low.png" or "/high.png" suffix.
     /// </summary>
     public string? Image { get; set; }
+
+    /// <summary>
+    ///     Gets or sets a value indicating whether the card is locked.
+    /// </summary>
+    public bool IsLocked { get; set; }
 
     /// <summary>
     ///     Gets or sets the pricing information for the card.
