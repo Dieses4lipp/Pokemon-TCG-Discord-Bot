@@ -72,8 +72,8 @@ public static class PullCommandHandler
                 selectedCardList.Add(cardToAdd);
             }
 
-            var projectRoot = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..\..\");
-            var setFolder = Path.Combine(projectRoot, $@"Assets\sets_covers\{setId}");
+            var projectRoot = AppDomain.CurrentDomain.BaseDirectory;
+            var setFolder = Path.Combine(projectRoot, "Assets", "sets_covers", setId);
 
             string packImagePath;
 
@@ -90,12 +90,12 @@ public static class PullCommandHandler
                 else
                 {
                     // Fallback to default.jpg
-                    packImagePath = Path.Combine(projectRoot, @"Assets\sets_covers\default.jpg");
+                    packImagePath = Path.Combine(projectRoot, "Assets", "sets_covers", "default.jpg");
                 }
             }
             else
             {
-                packImagePath = Path.Combine(projectRoot, @"Assets\sets_covers\default.jpg");
+                packImagePath = Path.Combine(projectRoot, "Assets", "sets_covers", "default.jpg");
             }
 
             if (!File.Exists(packImagePath))
