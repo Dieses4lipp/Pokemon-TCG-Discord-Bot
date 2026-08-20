@@ -6,6 +6,7 @@ using DiscordBot.Commands.SlashCommandHandlers.AdminCommands.StatsCommand;
 using DiscordBot.Commands.SlashCommandHandlers.AdminCommands.TurnOffCommand;
 using DiscordBot.Commands.SlashCommandHandlers.AdminCommands.TurnOnCommand;
 using DiscordBot.Commands.SlashCommandHandlers.AdminCommands.UnlockSetCommand;
+using DiscordBot.Commands.SlashCommandHandlers.ExpeditionCommands;
 using DiscordBot.Commands.SlashCommandHandlers.TradeCommands.CancelTradeCommand;
 using DiscordBot.Commands.SlashCommandHandlers.TradeCommands.ConfirmTradeCommand;
 using DiscordBot.Commands.SlashCommandHandlers.TradeCommands.TradeCommand;
@@ -50,6 +51,7 @@ public class Bot(DiscordSocketClient client)
                 SlashCommandBuilders.ConfirmTradeCommand().Build(),
                 SlashCommandBuilders.CancelTradeCommand().Build(),
                 SlashCommandBuilders.SetsCommand().Build(),
+                SlashCommandBuilders.ExpeditionCommand().Build(),
         ]);
 
         // This one call handles everything: Adds, Updates, and Deletes
@@ -94,6 +96,8 @@ public class Bot(DiscordSocketClient client)
         Console.WriteLine("Successfully build canceltrade command");
         var setsCommand = SlashCommandBuilders.SetsCommand().Build();
         Console.WriteLine("Successfully build sets command");
+        var expeditionCommand = SlashCommandBuilders.ExpeditionCommand().Build();
+        Console.WriteLine("Successfully build expedition command");
         List<ApplicationCommandProperties> builtSlashCommands = [
             guildCommand,
             helpCommand,
@@ -109,6 +113,7 @@ public class Bot(DiscordSocketClient client)
             confirmTradeCommand,
             cancelTradeCommand,
             setsCommand,
+            expeditionCommand,
             ];
         Console.WriteLine("Adding slash commands to test server");
         await guild.BulkOverwriteApplicationCommandAsync([.. builtSlashCommands]);
@@ -209,6 +214,10 @@ public class Bot(DiscordSocketClient client)
                 case "sets":
                     await SetsCommandHandler.Handle(cmd);
                     break;
+
+                case "expedition":
+                    await ExpeditionCommandHandler.Handle(cmd);
+                    break;
             }
         }
         catch (Exception ex)
@@ -258,6 +267,10 @@ public class Bot(DiscordSocketClient client)
         {
             case "pull":
                 await PullAutocompleteHandler.Handle(interaction);
+                break;
+
+            case "expedition":
+                await ExpeditionAutocompleteHandler.Handle(interaction);
                 break;
         }
     }

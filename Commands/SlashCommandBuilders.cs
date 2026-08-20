@@ -130,4 +130,34 @@ public static class SlashCommandBuilders
         new SlashCommandBuilder()
             .WithName("sets")
             .WithDescription("Displays a list of available Pokémon card sets.");
+
+    public static SlashCommandBuilder ExpeditionCommand() =>
+        new SlashCommandBuilder()
+            .WithName("expedition")
+            .WithDescription("Send cards on an expedition.")
+            .AddOption(
+                "start",
+                ApplicationCommandOptionType.SubCommand,
+                "Starts a new expedition.",
+                options:
+                [
+                    new SlashCommandOptionBuilder()
+                        .WithName("location")
+                        .WithDescription("The location to send your cards to.")
+                        .WithType(ApplicationCommandOptionType.String)
+                        .WithRequired(true)
+                        .WithAutocomplete(true),
+                    new SlashCommandOptionBuilder()
+                        .WithName("cards")
+                        .WithDescription("Comma-separated names of the cards to send.")
+                        .WithType(ApplicationCommandOptionType.String)
+                        .WithRequired(true)
+                        .WithAutocomplete(true),
+                ]
+            )
+            .AddOption(
+                "status",
+                ApplicationCommandOptionType.SubCommand,
+                "Shows the status of your current expedition."
+            );
 }
