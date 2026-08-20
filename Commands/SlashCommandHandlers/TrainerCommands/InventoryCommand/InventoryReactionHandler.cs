@@ -53,6 +53,12 @@ public static class InventoryReactionHandler
         Card cardToSell = session.Cards[session.CurrentIndex];
         UserCardCollection collection = await CardStorage.LoadUserCardsAsync(session.UserId);
 
+        if (cardToSell.IsLocked)
+        {
+            await component.FollowupAsync("🔒 This card is locked (on an expedition) and can't be sold.", ephemeral: true);
+            return;
+        }
+
         // Calculate market value
         double marketPrice = GetCardMarketValue(cardToSell);
 
