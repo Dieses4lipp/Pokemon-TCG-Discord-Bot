@@ -159,5 +159,10 @@ public static class SlashCommandBuilders
                 "status",
                 ApplicationCommandOptionType.SubCommand,
                 "Shows the status of your current expedition."
+            )
+            .AddOption(
+                "claim",
+                ApplicationCommandOptionType.SubCommand,
+                "Claims the rewards of a finished expedition."
             );
 }

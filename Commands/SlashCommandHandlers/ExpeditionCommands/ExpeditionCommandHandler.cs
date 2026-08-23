@@ -1,4 +1,5 @@
 using Discord.WebSocket;
+using DiscordBot.Commands.SlashCommandHandlers.ExpeditionCommands.ClaimCommand;
 using DiscordBot.Commands.SlashCommandHandlers.ExpeditionCommands.StartCommand;
 using DiscordBot.Commands.SlashCommandHandlers.ExpeditionCommands.StatusCommand;
 
@@ -31,6 +32,10 @@ public static class ExpeditionCommandHandler
 
             case "status":
                 await ExpeditionStatusCommandHandler.Handle(command);
+                break;
+
+            case "claim":
+                await ExpeditionClaimCommandHandler.Handle(command);
                 break;
         }
     }
