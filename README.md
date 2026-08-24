@@ -36,6 +36,9 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
 - **Trading System:**  
   Initiate trades with other users using `/trade [user] [give-card] [receive-card]` along with commands to confirm (`/confirmtrade`) or cancel (`/canceltrade`) a trade.
 
+- **Expeditions:**  
+  Send cards off to a location with `/expedition start [location] [cards]`, check progress with `/expedition status`, and collect coin and card rewards with `/expedition claim` once the timer finishes. Cards on an expedition are locked and can't be sold or traded until claimed.
+
 - **User Profiles:**  
   Display user profiles with `/profile [user]` to see their collection or trading history.
 
@@ -138,6 +141,17 @@ Once the bot is running and added to your Discord server, interact with it using
 
 - **`/canceltrade`**  
   Cancels an active trade session (End the trade session).
+
+### Expedition Commands
+
+- **`/expedition start [location] [cards]`**  
+  Sends a comma-separated list of owned, unlocked cards off on an expedition to the given location. Locks the cards until claimed. Fails if you already have an expedition in progress.
+
+- **`/expedition status`**  
+  Shows the location, sent cards, and remaining time (or claim readiness) of your active expedition.
+
+- **`/expedition claim`**  
+  Once the expedition timer is up, claims the coin reward (and a chance at bonus cards), unlocks the sent cards, and clears the expedition so a new one can be started.
 
 ### Administrative Commands
 
