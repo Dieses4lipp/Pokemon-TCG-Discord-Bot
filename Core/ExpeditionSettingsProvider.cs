@@ -43,8 +43,8 @@ public static class ExpeditionSettingsProvider
 
         if (!File.Exists(SettingsFilePath))
         {
-            _settings = new ExpeditionSettings();
-            return _settings;
+            throw new FileNotFoundException(
+                $"Expedition settings file not found at '{SettingsFilePath}'.", SettingsFilePath);
         }
 
         var json = File.ReadAllText(SettingsFilePath);
