@@ -38,4 +38,8 @@
     <Folder Include="NewFolder\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="NewFolder\" />
+  </ItemGroup>
+
 </Project>
