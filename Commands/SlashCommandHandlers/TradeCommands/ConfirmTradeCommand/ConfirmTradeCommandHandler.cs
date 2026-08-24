@@ -59,6 +59,12 @@ public static class ConfirmTradeCommandHandler
             return;
         }
 
+        if (cardFromSender.IsLocked)
+        {
+            await command.FollowupAsync($"🔒 `{cardFromSender.Name}` got locked (on an expedition) in the meantime. Trade cancelled.");
+            return;
+        }
+
         Card? cardFromReceiver = null;
         if (session.CardToReceive != null)
         {
@@ -68,6 +74,12 @@ public static class ConfirmTradeCommandHandler
             if (cardFromReceiver == null)
             {
                 await command.FollowupAsync("❌ The requested card is no longer in your inventory. Trade cancelled.");
+                return;
+            }
+
+            if (cardFromReceiver.IsLocked)
+            {
+                await command.FollowupAsync($"🔒 `{cardFromReceiver.Name}` got locked (on an expedition) in the meantime. Trade cancelled.");
                 return;
             }
         }

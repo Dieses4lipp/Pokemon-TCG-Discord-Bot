@@ -61,6 +61,12 @@ public static class TradeCommandHandler
             return;
         }
 
+        if (cardToGive.IsLocked)
+        {
+            await command.FollowupAsync($"🔒 `{cardToGive.Name}` is locked (on an expedition) and can't be traded.", ephemeral: true);
+            return;
+        }
+
         var receiverCollection = await CardStorage.LoadUserCardsAsync(targetUser.Id);
         Card? cardToReceive = null;
 
@@ -72,6 +78,12 @@ public static class TradeCommandHandler
             if (cardToReceive == null)
             {
                 await command.FollowupAsync($"❌ {targetUser.Username} doesn't seem to own a `{receiveCardName}`.", ephemeral: true);
+                return;
+            }
+
+            if (cardToReceive.IsLocked)
+            {
+                await command.FollowupAsync($"🔒 `{cardToReceive.Name}` is locked (on an expedition) and can't be traded.", ephemeral: true);
                 return;
             }
         }
