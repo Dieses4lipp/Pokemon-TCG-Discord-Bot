@@ -1,7 +1,7 @@
 # Pokémon TCG Discord Bot
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Philipp%20Spiekermann-blue?style=flat&logo=linkedin)](https://www.linkedin.com/in/philipp-spiekermann-a01975352/) [![Twitter](https://img.shields.io/badge/Twitter-@DiesesPhilipp-1DA1F2?style=flat&logo=twitter)](https://x.com/DiesesPhilipp)
 
-
+On Discord -> diesesphilipp
 
 
 A feature-rich Discord bot that brings the Pokémon Trading Card Game experience to your server. Pull packs of random Pokémon cards, manage your personal collection, trade with friends, and more - all powered by the official [Pokémon TCG API](https://pokemontcg.io/).
