@@ -1,0 +1,8 @@
+[Unit]
+Description=Pull and redeploy the Pokemon TCG bot image if :main changed
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/pokebot-update.sh

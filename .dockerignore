@@ -1,0 +1,15 @@
+bin
+obj
+deploy
+UserCards
+.git
+.github
+.vs
+.vscode
+.claude
+graphify-out
+.env*
+*.log
+Dockerfile
+.dockerignore
+ops

@@ -1,16 +1,13 @@
-# .gitignore for .NET-Projects
 
-# .NET development files
 bin/
 obj/
 
-# .env file
 .env
 
-# UserCards folder and all JSON files inside it
 UserCards/
 *.json
 
-# .vs folder and all contents
 .vs/
 /deploy
+
+!Data/expeditionSettings.json
