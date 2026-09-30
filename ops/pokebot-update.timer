@@ -1,0 +1,10 @@
+[Unit]
+Description=Check GHCR for a new Pokemon TCG bot image every 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

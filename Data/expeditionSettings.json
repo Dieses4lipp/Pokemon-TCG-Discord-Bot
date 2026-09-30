@@ -1,0 +1,54 @@
+{
+  "locations": [
+    {
+      "id": "viridian-forest",
+      "name": "Viridian Forest",
+      "durationMinutes": 15,
+      "minReward": 5.0,
+      "maxReward": 15.0,
+      "cardRewardChance": 0.10,
+      "cardRewardCount": 1,
+      "cardRewardSetId": ""
+    },
+    {
+      "id": "mt-moon",
+      "name": "Mt. Moon",
+      "durationMinutes": 60,
+      "minReward": 15.0,
+      "maxReward": 40.0,
+      "cardRewardChance": 0.20,
+      "cardRewardCount": 1,
+      "cardRewardSetId": ""
+    },
+    {
+      "id": "rock-tunnel",
+      "name": "Rock Tunnel",
+      "durationMinutes": 180,
+      "minReward": 40.0,
+      "maxReward": 90.0,
+      "cardRewardChance": 0.35,
+      "cardRewardCount": 1,
+      "cardRewardSetId": ""
+    },
+    {
+      "id": "seafoam-islands",
+      "name": "Seafoam Islands",
+      "durationMinutes": 480,
+      "minReward": 90.0,
+      "maxReward": 180.0,
+      "cardRewardChance": 0.50,
+      "cardRewardCount": 1,
+      "cardRewardSetId": ""
+    },
+    {
+      "id": "cerulean-cave",
+      "name": "Cerulean Cave",
+      "durationMinutes": 1440,
+      "minReward": 180.0,
+      "maxReward": 400.0,
+      "cardRewardChance": 0.75,
+      "cardRewardCount": 2,
+      "cardRewardSetId": ""
+    }
+  ]
+}

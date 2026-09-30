@@ -1,0 +1,16 @@
+services:
+  bot:
+    image: ghcr.io/dieses4lipp/pokemon-tcg-discord-bot:main
+    container_name: pokebot
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./UserCards:/app/UserCards
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    pids_limit: 128
