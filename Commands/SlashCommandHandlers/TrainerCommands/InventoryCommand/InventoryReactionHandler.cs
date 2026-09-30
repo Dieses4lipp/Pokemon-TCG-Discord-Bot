@@ -207,11 +207,21 @@ public static class InventoryReactionHandler
             .Build();
 
         var embed = CommandHandler.BuildCardEmbed(currentCard, session.CurrentIndex + 1, session.Cards.Count);
+        var attachments = CommandHandler.BuildCardAttachments(currentCard);
 
-        await component.ModifyOriginalResponseAsync(m =>
+        try
         {
-            m.Embed = embed;
-            m.Components = buttons;
-        });
+            await component.ModifyOriginalResponseAsync(m =>
+            {
+                m.Embed = embed;
+                m.Components = buttons;
+                m.Attachments = new Optional<IEnumerable<FileAttachment>>(attachments);
+            });
+        }
+        finally
+        {
+            foreach (var attachment in attachments)
+                attachment.Dispose();
+        }
     }
 }

@@ -95,12 +95,22 @@ public static class PullReactionHandler
             .Build();
 
         var embed = CommandHandler.BuildCardEmbed(currentCard, session.CurrentIndex + 1, session.Cards.Count);
+        var attachments = CommandHandler.BuildCardAttachments(currentCard);
 
-        await component.ModifyOriginalResponseAsync(m =>
+        try
         {
-            m.Embed = embed;
-            m.Components = buttons;
-        });
+            await component.ModifyOriginalResponseAsync(m =>
+            {
+                m.Embed = embed;
+                m.Components = buttons;
+                m.Attachments = new Optional<IEnumerable<FileAttachment>>(attachments);
+            });
+        }
+        finally
+        {
+            foreach (var attachment in attachments)
+                attachment.Dispose();
+        }
     }
 
     /// <summary>
@@ -120,6 +130,7 @@ public static class PullReactionHandler
             return;
 
         var embed = CommandHandler.BuildCardEmbed(session.Cards[0], 1, session.Cards.Count);
+        var attachments = CommandHandler.BuildCardAttachments(session.Cards[0]);
 
         var buttons = new ComponentBuilder()
             .WithButton("Previous", "prev_card", ButtonStyle.Secondary)
@@ -128,12 +139,21 @@ public static class PullReactionHandler
             .WithButton("💵", "sell_pack", ButtonStyle.Danger)
             .Build();
 
-        await component.ModifyOriginalResponseAsync(m =>
+        try
         {
-            m.Embed = embed;
-            m.Components = buttons;
-            m.Attachments = new Optional<IEnumerable<FileAttachment>>(Array.Empty<FileAttachment>());
-        });
+            // Replaces the pack cover attachment
+            await component.ModifyOriginalResponseAsync(m =>
+            {
+                m.Embed = embed;
+                m.Components = buttons;
+                m.Attachments = new Optional<IEnumerable<FileAttachment>>(attachments);
+            });
+        }
+        finally
+        {
+            foreach (var attachment in attachments)
+                attachment.Dispose();
+        }
     }
 
     /// <summary>

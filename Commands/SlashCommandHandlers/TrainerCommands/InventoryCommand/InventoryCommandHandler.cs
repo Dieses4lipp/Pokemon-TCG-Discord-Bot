@@ -54,7 +54,20 @@ public static class InventoryCommandHandler
 
         Embed embed = CommandHandler.BuildCardEmbed(currentCard, 1, collection.Cards.Count);
 
-        RestFollowupMessage message = await command.FollowupAsync(components: buttons, embed: embed);
+        var attachments = CommandHandler.BuildCardAttachments(currentCard);
+
+        RestFollowupMessage message;
+        try
+        {
+            message = attachments.Length > 0
+                ? await command.FollowupWithFilesAsync(attachments, components: buttons, embed: embed)
+                : await command.FollowupAsync(components: buttons, embed: embed);
+        }
+        finally
+        {
+            foreach (var attachment in attachments)
+                attachment.Dispose();
+        }
 
         var session = new PackSession(message.Id, command.User.Id, collection.Cards);
         InventoryReactionHandler.ActiveSessions[message.Id] = session;
