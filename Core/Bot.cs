@@ -128,7 +128,26 @@ public class Bot(DiscordSocketClient client)
     /// </param>
     public static async Task HandleButtonPressAsync(SocketMessageComponent component)
     {
-        await (component.Data.CustomId switch
+        try
+        {
+            await DispatchButtonPressAsync(component);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error handling button '{component.Data.CustomId}': {ex}");
+            await ReportErrorAsync(component, "An error occurred while processing this action.");
+        }
+    }
+
+    /// <summary>
+    ///     Routes a button press to its handler based on the custom ID
+    /// </summary>
+    /// <param name="component">
+    ///     The <see cref="SocketMessageComponent"/> which is pressed
+    /// </param>
+    private static Task DispatchButtonPressAsync(SocketMessageComponent component)
+    {
+        return component.Data.CustomId switch
         {
             "open_pack" => PullReactionHandler.HandleOpenPackAsync(component),
             "next_card" => PullReactionHandler.HandleMoveCardIndex(component, 1),
@@ -142,7 +161,32 @@ public class Bot(DiscordSocketClient client)
             //"prev_set" => SetsReactionHandler.HandleMoveIndex(component, -1),
             //"next_set" => SetsReactionHandler.HandleMoveIndex(component, 1),
             _ => Task.CompletedTask,
-        });
+        };
+    }
+
+    /// <summary>
+    ///     Sends an error message to the user, using a followup if the interaction was already
+    ///     deferred or responded to. Never throws, so it is safe to call from a catch block.
+    /// </summary>
+    /// <param name="interaction">
+    ///     The interaction that failed
+    /// </param>
+    /// <param name="message">
+    ///     The error message shown to the user
+    /// </param>
+    private static async Task ReportErrorAsync(SocketInteraction interaction, string message)
+    {
+        try
+        {
+            if (interaction.HasResponded)
+                await interaction.FollowupAsync(message, ephemeral: true);
+            else
+                await interaction.RespondAsync(message, ephemeral: true);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to report error to user: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -222,8 +266,8 @@ public class Bot(DiscordSocketClient client)
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error handling slash command: {ex.Message}");
-            await cmd.RespondAsync("An error occurred while processing the command.");
+            Console.WriteLine($"Error handling slash command '{cmd.CommandName}': {ex}");
+            await ReportErrorAsync(cmd, "An error occurred while processing the command.");
         }
     }
 
