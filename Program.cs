@@ -87,10 +87,10 @@ internal static class Program
         var bot = new Bot(client);
         CommandHandler.ClearTradeSessions();
         await bot.StartAsync(botToken);
-        // Log the bot's start time and keep the application running
+        // Log the bot's start time and keep the application running until the watchdog exits it
         StartTime = DateTime.UtcNow;
         Console.WriteLine($"Bot started at: {StartTime}");
-        await Task.Delay(-1);
+        await GatewayWatchdog.RunAsync(client);
     }
 
     /// <summary>

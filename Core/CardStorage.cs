@@ -14,13 +14,14 @@ public static class CardStorage
         "UserCards"
     );
 
+    // Directory where collections of users who left a guild are kept until they come back
+    public static string ArchivedUserCardsDirectory = Path.Combine(UserCardsDirectory, "Left");
+
     static CardStorage()
     {
-        // Ensure the directory exists
-        if (!Directory.Exists(UserCardsDirectory))
-        {
-            Directory.CreateDirectory(UserCardsDirectory);
-        }
+        // Ensure the directories exist
+        Directory.CreateDirectory(UserCardsDirectory);
+        Directory.CreateDirectory(ArchivedUserCardsDirectory);
     }
 
     /// <summary>
@@ -36,6 +37,14 @@ public static class CardStorage
     public static async Task<UserCardCollection> LoadUserCardsAsync(ulong userId)
     {
         string userFilePath = Path.Combine(UserCardsDirectory, $"{userId}.json");
+        string archivedFilePath = Path.Combine(ArchivedUserCardsDirectory, $"{userId}.json");
+
+        // Restore the collection of a user who left a guild and is active again
+        if (!File.Exists(userFilePath) && File.Exists(archivedFilePath))
+        {
+            File.Move(archivedFilePath, userFilePath);
+            Console.WriteLine($"Restored archived JSON file for user {userId}.");
+        }
 
         if (File.Exists(userFilePath))
         {
@@ -62,5 +71,26 @@ public static class CardStorage
 
         var json = JsonConvert.SerializeObject(collection, Formatting.Indented);
         await File.WriteAllTextAsync(userFilePath, json);
+    }
+
+    /// <summary>
+    ///     Moves a user's card collection into the archive directory instead of deleting it, so it
+    ///     is restored on the next load if the user is still active (e.g. in another guild) or rejoins.
+    /// </summary>
+    /// <param name="userId">
+    ///     The user ID whose card collection is to be archived.
+    /// </param>
+    /// <returns>
+    ///     <see langword="true"/> if a collection was archived; otherwise, <see langword="false"/>.
+    /// </returns>
+    public static bool ArchiveUserCards(ulong userId)
+    {
+        string userFilePath = Path.Combine(UserCardsDirectory, $"{userId}.json");
+
+        if (!File.Exists(userFilePath))
+            return false;
+
+        File.Move(userFilePath, Path.Combine(ArchivedUserCardsDirectory, $"{userId}.json"), overwrite: true);
+        return true;
     }
 }

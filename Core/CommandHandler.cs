@@ -281,7 +281,9 @@ public static class CommandHandler
     }
 
     /// <summary>
-    ///     Handles cleanup when a user leaves the guild by deleting their saved card collection.
+    ///     Handles cleanup when a user leaves a guild by archiving their saved card collection.
+    ///     The collection is restored on the user's next command, so leaving one guild while still
+    ///     playing in another (or rejoining) does not lose any data.
     /// </summary>
     /// <param name="user">
     ///     The user who left.
@@ -291,12 +293,9 @@ public static class CommandHandler
     /// </returns>
     public static Task HandleUserLeft(SocketGuild _, SocketUser user)
     {
-        string userFilePath = Path.Combine(CardStorage.UserCardsDirectory, $"{user.Id}.json");
-
-        if (File.Exists(userFilePath))
+        if (CardStorage.ArchiveUserCards(user.Id))
         {
-            File.Delete(userFilePath);
-            Console.WriteLine($"Deleted JSON file for user {user.Username} ({user.Id}).");
+            Console.WriteLine($"Archived JSON file for user {user.Username} ({user.Id}).");
         }
         else
         {

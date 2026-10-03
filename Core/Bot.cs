@@ -32,6 +32,8 @@ public class Bot(DiscordSocketClient client)
 {
     private readonly DiscordSocketClient _client = client;
 
+    private bool _commandsRegistered;
+
     public static async Task RegisterGuildCommands(SocketGuild guild)
     {
         var commandList = new List<ApplicationCommandProperties>();
@@ -56,68 +58,6 @@ public class Bot(DiscordSocketClient client)
 
         // This one call handles everything: Adds, Updates, and Deletes
         await guild.BulkOverwriteApplicationCommandAsync([.. commandList]);
-    }
-
-    /// <summary>
-    ///     Refreshing slash commands for the test server by deleting all existing commands and
-    ///     re-adding them for debugging purposes.
-    /// </summary>
-    /// <param name="guild">
-    ///     The name of the test server
-    /// </param>
-    public static async Task SyncCommands(SocketGuild guild)
-    {
-        // Be careful RATE LIMIT !!!
-        var guildCommand = SlashCommandBuilders.PullCommand().Build();
-        Console.WriteLine("Successfully built pull command");
-        var helpCommand = SlashCommandBuilders.HelpCommand().Build();
-        Console.WriteLine("Successfully built help command");
-        var inventoryCommand = SlashCommandBuilders.InventoryCommand().Build();
-        Console.WriteLine("Successfully built inventory command");
-        var profileCommand = SlashCommandBuilders.ProfileCommand().Build();
-        Console.WriteLine("Successfully built profile command");
-        var statsCommand = SlashCommandBuilders.StatsCommand().Build();
-        Console.WriteLine("Successfully built stats command");
-        var restartCommand = SlashCommandBuilders.RestartCommand().Build();
-        Console.WriteLine("Successfully build restart command");
-        var turnOffCommand = SlashCommandBuilders.TurnOffCommand().Build();
-        Console.WriteLine("Successfully build turnoff command");
-        var turnOnCommand = SlashCommandBuilders.TurnOnCommand().Build();
-        Console.WriteLine("Successfully build turnon command");
-        var lockSetCommand = SlashCommandBuilders.LockSetCommand().Build();
-        Console.WriteLine("Successfully build lockset command");
-        var unlockSetCommand = SlashCommandBuilders.UnlockSetCommand().Build();
-        Console.WriteLine("Successfully build unlockset command");
-        var tradeCommand = SlashCommandBuilders.TradeCommand().Build();
-        Console.WriteLine("Successfully build trade command");
-        var confirmTradeCommand = SlashCommandBuilders.ConfirmTradeCommand().Build();
-        Console.WriteLine("Successfully build confirmtrade command");
-        var cancelTradeCommand = SlashCommandBuilders.CancelTradeCommand().Build();
-        Console.WriteLine("Successfully build canceltrade command");
-        var setsCommand = SlashCommandBuilders.SetsCommand().Build();
-        Console.WriteLine("Successfully build sets command");
-        var expeditionCommand = SlashCommandBuilders.ExpeditionCommand().Build();
-        Console.WriteLine("Successfully build expedition command");
-        List<ApplicationCommandProperties> builtSlashCommands = [
-            guildCommand,
-            helpCommand,
-            inventoryCommand,
-            profileCommand,
-            statsCommand,
-            restartCommand,
-            turnOffCommand,
-            turnOnCommand,
-            lockSetCommand,
-            unlockSetCommand,
-            tradeCommand,
-            confirmTradeCommand,
-            cancelTradeCommand,
-            setsCommand,
-            expeditionCommand,
-            ];
-        Console.WriteLine("Adding slash commands to test server");
-        await guild.BulkOverwriteApplicationCommandAsync([.. builtSlashCommands]);
-        Console.WriteLine("Re-added slash commands to test server");
     }
 
     /// <summary>
@@ -287,9 +227,8 @@ public class Bot(DiscordSocketClient client)
         _client.Log += Log;
         _client.Ready += OnReady;
 
-        // Register slash commands for the test server for debugging purposes
-        _client.Ready += async () =>
-            await SyncCommands(_client.Guilds.FirstOrDefault(g => g.Name == "DiesesPhilipp's server")!);
+        // Register slash commands for every guild once; Ready fires again on each reconnect
+        _client.Ready += RegisterCommandsOnFirstReadyAsync;
 
         // Registers slash commands for any guild the bot joins
         _client.JoinedGuild += async (guild) =>
@@ -316,6 +255,31 @@ public class Bot(DiscordSocketClient client)
             case "expedition":
                 await ExpeditionAutocompleteHandler.Handle(interaction);
                 break;
+        }
+    }
+
+    /// <summary>
+    ///     Registers slash commands for all guilds the bot is in, only on the first Ready event.
+    /// </summary>
+    /// <returns>
+    ///     A task representing the asynchronous operation.
+    /// </returns>
+    private async Task RegisterCommandsOnFirstReadyAsync()
+    {
+        if (_commandsRegistered) return;
+        _commandsRegistered = true;
+
+        foreach (var guild in _client.Guilds)
+        {
+            try
+            {
+                await RegisterGuildCommands(guild);
+                Console.WriteLine($"Registered slash commands for guild {guild.Name} ({guild.Id}).");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to register slash commands for guild {guild.Name} ({guild.Id}): {ex}");
+            }
         }
     }
 
