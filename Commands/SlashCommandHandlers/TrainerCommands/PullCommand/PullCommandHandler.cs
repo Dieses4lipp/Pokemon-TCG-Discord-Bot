@@ -6,8 +6,8 @@ using DiscordBot.Models;
 namespace DiscordBot.Commands.SlashCommandHandlers.TrainerCommands.PullCommand;
 
 /// <summary>
-///     A class that handles the /pull slash command, allowing users to pull a pack of 9 random
-///     Pokémon cards from a specified set.
+///     A class that handles the /pull slash command, allowing users to pull a booster pack from a
+///     specified set. Pack size, rarity odds and price are configured per set in Data/packSettings.json.
 /// </summary>
 public static class PullCommandHandler
 {
@@ -54,49 +54,17 @@ public static class PullCommandHandler
             }
 
             var random = new Random();
-            var selectedCardList = new List<Card>();
 
-            // Optimized Gacha Loop
-            for (int i = 0; i < 9; i++)
-            {
-                string selectedRarity = CommandHandler.RollRarity(random);
+            // Pack layout (card count, slot odds, price) and covers come from Data/packSettings.json
+            PackProfile profile = PackSettingsProvider.GetProfile(setId);
 
-                // Filter cards by rarity
-                var possibleCards = allCards.Where(c => c.Rarity == selectedRarity).ToList();
+            var uncoveredRarities = PackBuilder.GetUncoveredRarities(profile, allCards);
+            if (uncoveredRarities.Count > 0)
+                Console.WriteLine($"Pack settings: set '{setId}' has rarities no slot can roll: {string.Join(", ", uncoveredRarities)}");
 
-                // Fallback: If no cards exist for that specific rarity in this set, grab any card
-                var cardToAdd = possibleCards.Count != 0
-                    ? possibleCards[random.Next(possibleCards.Count)]
-                    : allCards[random.Next(allCards.Count)];
+            var selectedCardList = PackBuilder.BuildPack(profile, allCards, random);
 
-                selectedCardList.Add(cardToAdd);
-            }
-
-            var projectRoot = AppDomain.CurrentDomain.BaseDirectory;
-            var setFolder = Path.Combine(projectRoot, "Assets", "sets_covers", setId);
-
-            string packImagePath;
-
-            if (Directory.Exists(setFolder))
-            {
-                var coverImages = Directory.GetFiles(setFolder, "*.jpg").ToList();
-
-
-                if (coverImages.Count > 0)
-                {
-                    //pick a random cover image from the set folder
-                    packImagePath = coverImages[random.Next(coverImages.Count)];
-                }
-                else
-                {
-                    // Fallback to default.jpg
-                    packImagePath = Path.Combine(projectRoot, "Assets", "sets_covers", "default.jpg");
-                }
-            }
-            else
-            {
-                packImagePath = Path.Combine(projectRoot, "Assets", "sets_covers", "default.jpg");
-            }
+            string packImagePath = PackSettingsProvider.GetRandomCoverPath(setId, random);
 
             if (!File.Exists(packImagePath))
             {
@@ -104,7 +72,7 @@ public static class PullCommandHandler
                 return;
             }
 
-            const double packCost = 5.0;
+            double packCost = profile.PackPrice;
             var userCollection = await CardStorage.LoadUserCardsAsync(command.User.Id);
 
             if (userCollection.Balance < packCost)

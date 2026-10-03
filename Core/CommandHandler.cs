@@ -33,19 +33,6 @@ public static class CommandHandler
     public static readonly Dictionary<ulong, SetSession> ActiveSetSessions = [];
 
     /// <summary>
-    ///     Maps card rarities to their corresponding probabilities.
-    /// </summary>
-    public static readonly Dictionary<string, double> RarityChances = new()
-    {
-        {"Common", 0.50 },
-        {"Uncommon", 0.20 },
-        {"Rare", 0.15 },
-        {"Rare Holo", 0.05 },
-        {"Ultra Rare", 0.07 },
-        {"Secret Rare", 0.03 }
-    };
-
-    /// <summary>
     ///     Stores the locked sets to prevent them from being pulled.
     /// </summary>
     public static readonly HashSet<string> LockedSets = [];
@@ -72,32 +59,6 @@ public static class CommandHandler
     /// </summary>
     private static readonly string DefaultCardImagePath =
         Path.Combine(AppContext.BaseDirectory, "Assets", "sets_covers", "default.jpg");
-
-    /// <summary>
-    ///     Determines the rarity of a card based on predefined probabilities.
-    /// </summary>
-    /// <param name="random">
-    ///     An instance of the random number generator.
-    /// </param>
-    /// <returns>
-    ///     A string representing the selected rarity.
-    /// </returns>
-    public static string RollRarity(Random random)
-    {
-        double roll = random.NextDouble();
-        double cumulative = 0.0;
-
-        foreach (var rarity in RarityChances)
-        {
-            cumulative += rarity.Value;
-            if (roll <= cumulative)
-            {
-                return rarity.Key;
-            }
-        }
-
-        return "Common";
-    }
 
     /// <summary>
     ///     Builds the attachments a card embed from <see cref="BuildCardEmbed"/> needs.
