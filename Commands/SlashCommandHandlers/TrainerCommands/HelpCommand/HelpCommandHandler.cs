@@ -28,7 +28,7 @@ public class HelpCommandHandler
         .WithThumbnailUrl(botAvatarUrl)
 
         .AddField("🎮 Trainer Commands",
-            "`/pull [set-id]` - Open a pack of 9 cards from a specific set.\n" +
+            "`/pull [set-id]` - Open a booster pack from a specific set (pack size and odds depend on the set).\n" +
             "`/inventory` - Browse your saved cards and manage favorites.\n" +
             "`/profile [user]` - View your own or another trainer's collection stats.\n" +
             "`/sets` - View all available Pokémon sets and find their specific IDs.\n" +

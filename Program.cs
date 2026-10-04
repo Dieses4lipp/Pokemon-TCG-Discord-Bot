@@ -63,7 +63,10 @@ internal static class Program
         // Configure the Discord client
         var config = new DiscordSocketConfig
         {
+            // GuildMembers is privileged: it must also be enabled in the Discord Developer Portal,
+            // otherwise the login fails. It is needed for the UserLeft event.
             GatewayIntents = GatewayIntents.Guilds |
+                             GatewayIntents.GuildMembers |
                              GatewayIntents.GuildMessages |
                              GatewayIntents.MessageContent |
                              GatewayIntents.GuildMessageReactions,
@@ -85,12 +88,14 @@ internal static class Program
             .BuildServiceProvider();
 
         var bot = new Bot(client);
-        CommandHandler.ClearTradeSessions();
+        // Restore bot on/off, locked sets, pull count, trades and paid packs from before the restart
+        BotStateStore.Load();
+        _ = CardStorage.RunArchivePurgeLoopAsync();
         await bot.StartAsync(botToken);
-        // Log the bot's start time and keep the application running
+        // Log the bot's start time and keep the application running until the watchdog exits it
         StartTime = DateTime.UtcNow;
         Console.WriteLine($"Bot started at: {StartTime}");
-        await Task.Delay(-1);
+        await GatewayWatchdog.RunAsync(client);
     }
 
     /// <summary>

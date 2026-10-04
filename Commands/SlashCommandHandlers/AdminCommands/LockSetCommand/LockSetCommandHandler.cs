@@ -34,6 +34,7 @@ public static class LockSetCommandHandler
         }
 
         bool wasAdded = CommandHandler.LockedSets.Add(setId);
+        if (wasAdded) await BotStateStore.SaveAsync();
 
         if (wasAdded)
         {

@@ -35,16 +35,17 @@ public static class ConfirmTradeCommandHandler
             return;
         }
 
-        // Remove the entries so no one else can trigger this logic again
-        CommandHandler.ActiveTrades.Remove(session.SenderId);
-        CommandHandler.ActiveTrades.Remove(session.ReceiverId);
-
         // Ensure the person confirming is the intended receiver
         if (session.ReceiverId != command.User.Id)
-        {       
+        {
             await command.FollowupAsync("⚠️ Only the person receiving the trade can confirm it.", ephemeral: true);
             return;
         }
+
+        // Remove the entries so no one else can trigger this logic again
+        CommandHandler.ActiveTrades.Remove(session.SenderId);
+        CommandHandler.ActiveTrades.Remove(session.ReceiverId);
+        await BotStateStore.SaveAsync();
 
         // Load both collections
         var senderCol = await CardStorage.LoadUserCardsAsync(session.SenderId);

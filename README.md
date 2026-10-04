@@ -25,7 +25,7 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
 ## Features
 
 - **Pack Pulling:**  
-  Pull a pack of 9 random Pokémon cards using `/pull [set-id]`.
+  Pull a booster pack using `/pull [set-id]`. Pack size, rarity odds per slot, price and cover images are configured per set in `Data/packSettings.json` (e.g. 11 cards for Base Set, 10 for Scarlet & Violet, 5 for TCG Pocket).
   
 - **Collection Management:**  
   View your saved cards with `/inventory` and manage your collection directly in Discord.
@@ -117,7 +117,7 @@ Once the bot is running and added to your Discord server, interact with it using
 ### General Commands
 
 - **`/pull [set-id] [language? (default: english)]`**  
-  Pulls a pack containing 9 random Pokémon cards. If a set ID is provided, only cards from that set are used.
+  Pulls a booster pack from the given set. The pack follows the set's profile in `Data/packSettings.json`: number of cards, rarity chances per slot (e.g. common, uncommon, reverse holo, rare slot) and pack price.
 
 - **`/inventory`**  
   Displays your saved Pokémon cards.

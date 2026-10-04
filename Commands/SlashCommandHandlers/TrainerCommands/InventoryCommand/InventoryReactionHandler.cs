@@ -50,12 +50,17 @@ public static class InventoryReactionHandler
 
         if (!ActiveSessions.TryGetValue(component.Message.Id, out var session)) return;
 
-        Card cardToSell = session.Cards[session.CurrentIndex];
+        Card sessionCard = session.Cards[session.CurrentIndex];
         UserCardCollection collection = await CardStorage.LoadUserCardsAsync(session.UserId);
 
-        if (cardToSell.IsLocked)
+        // Sell exactly one unlocked copy from the freshly loaded collection; the session snapshot
+        // may be stale (e.g. a copy went on an expedition after /inventory was opened)
+        Card? cardToSell = collection.Cards.FirstOrDefault(c =>
+            c.Name == sessionCard.Name && c.Rarity == sessionCard.Rarity && !c.IsLocked);
+
+        if (cardToSell == null)
         {
-            await component.FollowupAsync("🔒 This card is locked (on an expedition) and can't be sold.", ephemeral: true);
+            await component.FollowupAsync("🔒 No sellable copy left - this card is locked (on an expedition) or no longer in your inventory.", ephemeral: true);
             return;
         }
 
@@ -68,12 +73,11 @@ public static class InventoryReactionHandler
             return;
         }
 
-        int removedCount = collection.Cards.RemoveAll(c => c.Name == cardToSell.Name && c.Rarity == cardToSell.Rarity);
-
-        if (removedCount > 0)
+        if (collection.Cards.Remove(cardToSell))
         {
-            // Clear favorite if sold
-            if (IsFavorite(collection, cardToSell))
+            // Clear favorite if the last copy was sold
+            if (IsFavorite(collection, cardToSell) &&
+                !collection.Cards.Any(c => c.Name == cardToSell.Name && c.Rarity == cardToSell.Rarity))
             {
                 collection.FavoriteCard = null;
             }

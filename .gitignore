@@ -11,3 +11,4 @@ UserCards/
 /deploy
 
 !Data/expeditionSettings.json
+!Data/packSettings.json

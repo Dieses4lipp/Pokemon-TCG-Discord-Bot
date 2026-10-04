@@ -30,4 +30,9 @@ public class PackSession(ulong messageId, ulong userId, List<Card> cards)
     ///     cards in this pack that have already been saved.
     /// </summary>
     public HashSet<string> SavedCardIdentifiers { get; set; } = [];
+
+    /// <summary>
+    ///     Gets or sets when the session was created, used to drop stale sessions on restore.
+    /// </summary>
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

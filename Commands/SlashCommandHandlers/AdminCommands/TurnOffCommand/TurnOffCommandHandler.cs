@@ -26,6 +26,7 @@ public static class TurnOffCommandHandler
         }
 
         CommandHandler.BotActive = false;
+        await BotStateStore.SaveAsync();
 
         await command.FollowupAsync("💤 Bot is now inactive.");
     }

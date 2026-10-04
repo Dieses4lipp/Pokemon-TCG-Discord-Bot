@@ -38,6 +38,7 @@ public static class CancelTradeCommandHandler
 
         CommandHandler.ActiveTrades.Remove(session.SenderId);
         CommandHandler.ActiveTrades.Remove(session.ReceiverId);
+        await BotStateStore.SaveAsync();
 
         var embed = new EmbedBuilder()
             .WithTitle("🚫 Trade Cancelled")
