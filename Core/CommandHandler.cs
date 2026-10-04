@@ -79,6 +79,24 @@ public static class CommandHandler
     }
 
     /// <summary>
+    ///     Builds the attachments a card embed from <see cref="BuildCardEmbed"/> needs.
+    ///     Must be passed on every send/modify, so a previous card's fallback image gets removed.
+    /// </summary>
+    /// <param name="card">
+    ///     The card to display.
+    /// </param>
+    /// <returns>
+    ///     The fallback image if the card has no image URL, otherwise no attachments.
+    ///     The caller disposes them after sending.
+    /// </returns>
+    public static FileAttachment[] BuildCardAttachments(Card card)
+    {
+        return string.IsNullOrWhiteSpace(card.Image)
+            ? [new FileAttachment(DefaultCardImagePath)]
+            : [];
+    }
+
+    /// <summary>
     ///     Builds an embed to display a Pokémon card.
     /// </summary>
     /// <param name="card">
