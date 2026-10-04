@@ -103,7 +103,7 @@
           "count": 1,
           "rarities": {
             "Rare": 60,
-            "Rare Holo": 30,
+            "Holo Rare": 30,
             "Ultra Rare": 9,
             "Secret Rare": 1
           }
@@ -226,7 +226,7 @@
           "count": 1,
           "rarities": {
             "Rare": 50,
-            "Rare Holo": 22,
+            "Holo Rare": 22,
             "Holo Rare V": 14,
             "Holo Rare VMAX": 5,
             "Holo Rare VSTAR": 3,

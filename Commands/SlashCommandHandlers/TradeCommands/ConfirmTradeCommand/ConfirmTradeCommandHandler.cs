@@ -45,6 +45,7 @@ public static class ConfirmTradeCommandHandler
         // Remove the entries so no one else can trigger this logic again
         CommandHandler.ActiveTrades.Remove(session.SenderId);
         CommandHandler.ActiveTrades.Remove(session.ReceiverId);
+        await BotStateStore.SaveAsync();
 
         // Load both collections
         var senderCol = await CardStorage.LoadUserCardsAsync(session.SenderId);

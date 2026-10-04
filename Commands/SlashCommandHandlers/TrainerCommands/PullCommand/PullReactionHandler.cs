@@ -50,6 +50,7 @@ public static class PullReactionHandler
         }
 
         session.SavedCardIdentifiers.Add(cardIdentifier);
+        await BotStateStore.SaveAsync();
 
         if (collection.Cards.Count >= 10)
         {
@@ -171,6 +172,12 @@ public static class PullReactionHandler
         if (component.User.Id != session.UserId)
             return;
 
+        // End the session and persist that before paying out, so neither a double click nor a
+        // restart (which restores open sessions) can sell the same pack twice
+        if (!ActiveSessions.Remove(component.Message.Id))
+            return;
+        await BotStateStore.SaveAsync();
+
         double totalEarned = 0;
         int cardsSold = 0;
 
@@ -199,8 +206,6 @@ public static class PullReactionHandler
         var buttons = new ComponentBuilder()
             .WithButton("Pack Sold", "disabled_sell", ButtonStyle.Secondary, disabled: true)
             .Build();
-
-        ActiveSessions.Remove(component.Message.Id);
 
         await component.ModifyOriginalResponseAsync(m =>
         {

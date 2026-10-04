@@ -17,6 +17,11 @@ public static class CardStorage
     // Directory where collections of users who left a guild are kept until they come back
     public static string ArchivedUserCardsDirectory = Path.Combine(UserCardsDirectory, "Left");
 
+    /// <summary>
+    ///     How long the collection of a user who left is kept before it is deleted for good.
+    /// </summary>
+    public static readonly TimeSpan ArchiveRetention = TimeSpan.FromDays(30);
+
     static CardStorage()
     {
         // Ensure the directories exist
@@ -90,7 +95,42 @@ public static class CardStorage
         if (!File.Exists(userFilePath))
             return false;
 
-        File.Move(userFilePath, Path.Combine(ArchivedUserCardsDirectory, $"{userId}.json"), overwrite: true);
+        string archivedFilePath = Path.Combine(ArchivedUserCardsDirectory, $"{userId}.json");
+        File.Move(userFilePath, archivedFilePath, overwrite: true);
+
+        // A move keeps the last save time; stamp the archive time so the purge counts from here
+        File.SetLastWriteTimeUtc(archivedFilePath, DateTime.UtcNow);
         return true;
+    }
+
+    /// <summary>
+    ///     Deletes archived collections of users who left more than <see cref="ArchiveRetention"/>
+    ///     ago and never came back, then repeats once a day. Never throws.
+    /// </summary>
+    /// <returns>
+    ///     A task that runs for the lifetime of the process.
+    /// </returns>
+    public static async Task RunArchivePurgeLoopAsync()
+    {
+        while (true)
+        {
+            try
+            {
+                foreach (var file in Directory.GetFiles(ArchivedUserCardsDirectory, "*.json"))
+                {
+                    if (DateTime.UtcNow - File.GetLastWriteTimeUtc(file) <= ArchiveRetention)
+                        continue;
+
+                    File.Delete(file);
+                    Console.WriteLine($"Purged archived JSON file {Path.GetFileName(file)} (left more than {ArchiveRetention.TotalDays} days ago).");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to purge archived user files: {ex}");
+            }
+
+            await Task.Delay(TimeSpan.FromDays(1));
+        }
     }
 }

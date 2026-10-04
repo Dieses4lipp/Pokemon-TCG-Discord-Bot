@@ -35,6 +35,7 @@ public static class UnlockSetCommandHandler
 
         if (CommandHandler.LockedSets.Remove(setId))
         {
+            await BotStateStore.SaveAsync();
             await command.FollowupAsync($"🔓 **Set Unlocked:** Users can now pull from `{setId}` again.");
         }
         else

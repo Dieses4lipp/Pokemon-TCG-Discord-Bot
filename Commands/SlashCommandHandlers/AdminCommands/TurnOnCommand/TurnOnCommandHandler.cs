@@ -26,6 +26,7 @@ public static class TurnOnCommandHandler
         }
 
         CommandHandler.BotActive = true;
+        await BotStateStore.SaveAsync();
 
         await command.FollowupAsync("🔌 Bot is now active.");
     }

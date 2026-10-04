@@ -100,6 +100,7 @@ public static class TradeCommandHandler
         // Maps both users to the same session object
         CommandHandler.ActiveTrades[command.User.Id] = tradeSession;
         CommandHandler.ActiveTrades[targetUser.Id] = tradeSession;
+        await BotStateStore.SaveAsync();
 
         var requestingText = string.Empty;
         if (cardToReceive != null) requestingText += $"`{cardToReceive.Name}`\n";

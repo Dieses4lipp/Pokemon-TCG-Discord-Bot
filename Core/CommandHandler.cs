@@ -55,28 +55,15 @@ public static class CommandHandler
     public static long LastApiLatency { get; private set; } = 0;
 
     /// <summary>
+    ///     How many card detail requests may run against the API at the same time.
+    /// </summary>
+    private const int MaxParallelCardRequests = 8;
+
+    /// <summary>
     ///     Image shown for cards the API delivers without an image.
     /// </summary>
     private static readonly string DefaultCardImagePath =
         Path.Combine(AppContext.BaseDirectory, "Assets", "sets_covers", "default.jpg");
-
-    /// <summary>
-    ///     Builds the attachments a card embed from <see cref="BuildCardEmbed"/> needs.
-    ///     Must be passed on every send/modify, so a previous card's fallback image gets removed.
-    /// </summary>
-    /// <param name="card">
-    ///     The card to display.
-    /// </param>
-    /// <returns>
-    ///     The fallback image if the card has no image URL, otherwise no attachments.
-    ///     The caller disposes them after sending.
-    /// </returns>
-    public static FileAttachment[] BuildCardAttachments(Card card)
-    {
-        return string.IsNullOrWhiteSpace(card.Image)
-            ? [new FileAttachment(DefaultCardImagePath)]
-            : [];
-    }
 
     /// <summary>
     ///     Builds the attachments a card embed from <see cref="BuildCardEmbed"/> needs.
@@ -132,22 +119,41 @@ public static class CommandHandler
     }
 
     /// <summary>
-    ///     Retrieves a list of random Pokémon cards from the API. Optionally filters by set ID.
+    ///     Retrieves a list of random Pokémon cards of a set from the API.
     /// </summary>
     /// <param name="count">
     ///     The number of cards to retrieve.
     /// </param>
     /// <param name="setId">
-    ///     The set ID to filter cards by (optional).
+    ///     The set ID to draw cards from.
+    /// </param>
+    /// <param name="language">
+    ///     The API language code, e.g. "en".
     /// </param>
     /// <returns>
     ///     A task that returns a list of <see cref="Card"/> objects.
     /// </returns>
     public static async Task<List<Card>> GetRandomCards(int count, string setId, string language)
     {
-        var random = new Random();
-        //string requestUrl = string.IsNullOrEmpty(setId) ? CardsApiUrl : $"{SetsApiUrl}/{setId}";
+        var cardIds = await FetchSetCardIdsAsync(setId, language);
+        var selectedIds = cardIds.OrderBy(_ => Random.Shared.Next()).Take(count).ToList();
+        return await FetchCardDetailsAsync(selectedIds, language);
+    }
 
+    /// <summary>
+    ///     Fetches the IDs of all cards in a set.
+    /// </summary>
+    /// <param name="setId">
+    ///     The set ID.
+    /// </param>
+    /// <param name="language">
+    ///     The API language code, e.g. "en".
+    /// </param>
+    /// <returns>
+    ///     The card IDs of the set, or an empty list if the request failed.
+    /// </returns>
+    public static async Task<List<string>> FetchSetCardIdsAsync(string setId, string language)
+    {
         string requestUrl = $"{ApiLangUrl}{language}/sets/{setId}";
 
         try
@@ -208,54 +214,88 @@ public static class CommandHandler
             if (cardIds.Count == 0)
             {
                 Console.WriteLine("No card ids found in card array.");
-                return [];
             }
 
-            // Randomly pick up to 'count' ids
-            var selectedIds = cardIds.OrderBy(_ => random.Next()).Take(count).ToList();
-
-            var fullCards = new List<Card>();
-            foreach (var id in selectedIds)
-            {
-                try
-                {
-                    var url = $"{ApiLangUrl}{language}/cards/{id}";
-                    // Fetch detailed card. Some APIs return an object wrapper; handle both.
-                    var detailedResponse = await _httpClient.GetStringAsync(url);
-                    var detailToken = JToken.Parse(detailedResponse);
-
-                    // find inner object with id/name/images or fall back to top-level
-                    JToken? cardToken = null;
-                    if (detailToken.Type == JTokenType.Object)
-                    {
-                        cardToken = detailToken["data"] ?? detailToken["card"] ?? detailToken;
-                    }
-                    else if (detailToken.Type == JTokenType.Array)
-                    {
-                        cardToken = detailToken.First;
-                    }
-
-                    if (cardToken == null)
-                    {
-                        continue;
-                    }
-
-                    // Deserialize into your Card model
-                    var detailedCard = cardToken.ToObject<Card>();
-                    if (detailedCard != null) fullCards.Add(detailedCard);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Failed to fetch detailed card {id}: {ex.Message}");
-                }
-            }
-
-            return fullCards;
+            return cardIds;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to get random cards: {ex.Message}");
+            Console.WriteLine($"Failed to get cards of set {setId}: {ex}");
             return [];
+        }
+    }
+
+    /// <summary>
+    ///     Fetches the full details of several cards, a limited number of requests at a time.
+    ///     Cards that fail to load are skipped.
+    /// </summary>
+    /// <param name="cardIds">
+    ///     The IDs of the cards to fetch.
+    /// </param>
+    /// <param name="language">
+    ///     The API language code, e.g. "en".
+    /// </param>
+    /// <returns>
+    ///     The successfully fetched cards, in the order of <paramref name="cardIds"/>.
+    /// </returns>
+    public static async Task<List<Card>> FetchCardDetailsAsync(IReadOnlyList<string> cardIds, string language)
+    {
+        using var throttle = new SemaphoreSlim(MaxParallelCardRequests);
+
+        var cards = await Task.WhenAll(cardIds.Select(async id =>
+        {
+            await throttle.WaitAsync();
+            try
+            {
+                return await FetchCardDetailAsync(id, language);
+            }
+            finally
+            {
+                throttle.Release();
+            }
+        }));
+
+        return cards.OfType<Card>().ToList();
+    }
+
+    /// <summary>
+    ///     Fetches the full details of a single card.
+    /// </summary>
+    /// <param name="id">
+    ///     The card ID.
+    /// </param>
+    /// <param name="language">
+    ///     The API language code, e.g. "en".
+    /// </param>
+    /// <returns>
+    ///     The card, or <see langword="null"/> if it could not be fetched.
+    /// </returns>
+    private static async Task<Card?> FetchCardDetailAsync(string id, string language)
+    {
+        try
+        {
+            var url = $"{ApiLangUrl}{language}/cards/{id}";
+            // Fetch detailed card. Some APIs return an object wrapper; handle both.
+            var detailedResponse = await _httpClient.GetStringAsync(url);
+            var detailToken = JToken.Parse(detailedResponse);
+
+            // find inner object with id/name/images or fall back to top-level
+            JToken? cardToken = null;
+            if (detailToken.Type == JTokenType.Object)
+            {
+                cardToken = detailToken["data"] ?? detailToken["card"] ?? detailToken;
+            }
+            else if (detailToken.Type == JTokenType.Array)
+            {
+                cardToken = detailToken.First;
+            }
+
+            return cardToken?.ToObject<Card>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to fetch detailed card {id}: {ex.Message}");
+            return null;
         }
     }
 
@@ -282,14 +322,5 @@ public static class CommandHandler
         }
 
         return Task.CompletedTask;
-    }
-
-    /// <summary>
-    ///     Clears the last trade session
-    /// </summary>
-    public static void ClearTradeSessions()
-    {
-        ActiveTrades.Clear();
-        Console.WriteLine("Trade sessions cleared.");
     }
 }
