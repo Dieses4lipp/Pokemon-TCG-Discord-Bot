@@ -73,6 +73,9 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
 
    ```env
    TOKEN=your_new_discord_bot_token_here
+   # Optional: Discord user ID allowed to run /lockset, /unlockset, /turnon, /turnoff and /restart.
+   # Defaults to the owner of the Discord application.
+   OWNER_ID=your_discord_user_id
    ```
 
 3. **Restore Dependencies and Build:**
@@ -96,7 +99,7 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
   The bot listens strictly to Discord Application (Slash) Commands executing directly through integrations instead of the old-school text message prefix parsing mechanism.
 
 - **API Endpoints:**  
-  The bot uses endpoints from the Pokémon TCG API to fetch card and set data. Update these in the `CommandHandler` class if necessary.
+  The bot uses endpoints from the Pokémon TCG API to fetch card and set data. Update these in the `CardApiClient` class if necessary.
 
 - **Logging:**  
   Logging is routed to the console to help you monitor bot activity and debug errors.
