@@ -12,25 +12,14 @@ namespace DiscordBot.Core;
 public static class CommandHandler
 {
     public static readonly HttpClient _httpClient = new();
-    public static readonly string CardsApiUrl = "https://api.tcgdex.net/v2/en/cards";
     public static readonly string ApiLangUrl = "https://api.tcgdex.net/v2/";
     public static readonly string SetsApiUrl = "https://api.tcgdex.net/v2/en/sets";
-
-    /// <summary>
-    ///     Stores active card navigation sessions mapped by message ID.
-    /// </summary>
-    public static readonly Dictionary<ulong, PackSession> ActiveSessions = [];
 
     /// <summary>
     ///     Gets a dictionary that contains the currently active trade sessions, indexed by their
     ///     unique identifiers.
     /// </summary>
     public static readonly Dictionary<ulong, TradeSession> ActiveTrades = [];
-
-    /// <summary>
-    ///     Stores active set navigation sessions mapped by message ID.
-    /// </summary>
-    public static readonly Dictionary<ulong, SetSession> ActiveSetSessions = [];
 
     /// <summary>
     ///     Stores the locked sets to prevent them from being pulled.
@@ -41,8 +30,6 @@ public static class CommandHandler
     ///     Indicates whether the bot is active and responding to commands.
     /// </summary>
     public static bool BotActive = true;
-
-    public static int SetsSessionIndex = 0;
 
     /// <summary>
     ///     The number of cards that have been pulled by all users.

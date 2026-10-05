@@ -1,4 +1,4 @@
-﻿using DiscordBot.Events.Expedtion;
+﻿using DiscordBot.Events.Expedition;
 
 namespace DiscordBot.Models;
 

@@ -1,6 +1,6 @@
 using DiscordBot.Models;
 
-namespace DiscordBot.Events.Expedtion;
+namespace DiscordBot.Events.Expedition;
 
 /// <summary>
 ///     Represents an expedition currently in progress for a user.

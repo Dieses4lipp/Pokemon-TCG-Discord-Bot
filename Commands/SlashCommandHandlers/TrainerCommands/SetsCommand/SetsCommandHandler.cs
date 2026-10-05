@@ -52,12 +52,6 @@ public static class SetsCommandHandler
                 .WithFooter("Showing the 25 most recent sets.")
                 .WithCurrentTimestamp();
 
-            // TODO: Increment page number for api calls
-            //var buttons = new ComponentBuilder()
-            //    .WithButton("Previous", "prev_set", ButtonStyle.Secondary)
-            //    .WithButton("Next", "next_set", ButtonStyle.Secondary)
-            //    .Build();
-
             foreach (var set in sortedSets)
             {
                 embedBuilder.AddField(set.Name, $"`{set.Id}` \n", inline: true);

@@ -1,7 +1,7 @@
 using Discord;
 using Discord.WebSocket;
 using DiscordBot.Core;
-using DiscordBot.Events.Expedtion;
+using DiscordBot.Events.Expedition;
 using DiscordBot.Models;
 
 namespace DiscordBot.Commands.SlashCommandHandlers.ExpeditionCommands.StartCommand;
