@@ -1,4 +1,3 @@
-﻿using DiscordBot.Commands.SlashCommandHandlers.TrainerCommands.PullCommand;
 using DiscordBot.Models;
 using Newtonsoft.Json;
 
@@ -8,22 +7,22 @@ namespace DiscordBot.Core;
 ///     Persists the runtime state (bot on/off, locked sets, pull count, pending trades and paid
 ///     pack sessions) to a JSON file on the data volume, so a restart or redeploy does not lose it.
 /// </summary>
-public static class BotStateStore
+public sealed class BotStateStore(BotState botState, SessionStore sessions)
 {
     /// <summary>
     ///     Pack sessions older than this are not restored; their ephemeral messages are gone by then.
     /// </summary>
     private static readonly TimeSpan PackSessionMaxAge = TimeSpan.FromHours(24);
 
-    private static readonly string StateDirectory = Path.Combine(CardStorage.UserCardsDirectory, "State");
+    private static readonly string StateDirectory = Path.Combine(UserRepository.UserCardsDirectory, "State");
     private static readonly string StateFilePath = Path.Combine(StateDirectory, "botState.json");
 
-    private static readonly SemaphoreSlim WriteLock = new(1, 1);
+    private readonly SemaphoreSlim _writeLock = new(1, 1);
 
     /// <summary>
     ///     Restores the runtime state from disk. Does nothing if no state was saved yet.
     /// </summary>
-    public static void Load()
+    public void Load()
     {
         if (!File.Exists(StateFilePath))
         {
@@ -34,28 +33,12 @@ public static class BotStateStore
         var state = JsonConvert.DeserializeObject<PersistedBotState>(File.ReadAllText(StateFilePath))
             ?? new PersistedBotState();
 
-        CommandHandler.BotActive = state.BotActive;
-        CommandHandler.PullCount = state.PullCount;
-
-        CommandHandler.LockedSets.Clear();
-        CommandHandler.LockedSets.UnionWith(state.LockedSets);
-
-        CommandHandler.ActiveTrades.Clear();
-        foreach (var trade in state.ActiveTrades)
-        {
-            CommandHandler.ActiveTrades[trade.SenderId] = trade;
-            CommandHandler.ActiveTrades[trade.ReceiverId] = trade;
-        }
-
-        PullReactionHandler.ActiveSessions.Clear();
-        foreach (var session in state.PackSessions.Where(IsRecent))
-        {
-            PullReactionHandler.ActiveSessions[session.MessageId] = session;
-        }
+        botState.Restore(state.BotActive, state.PullCount, state.LockedSets);
+        sessions.Restore(state.PackSessions.Where(IsRecent), state.ActiveTrades);
 
         Console.WriteLine(
             $"Restored bot state: active={state.BotActive}, {state.LockedSets.Count} locked sets, " +
-            $"{state.ActiveTrades.Count} trades, {PullReactionHandler.ActiveSessions.Count} pack sessions.");
+            $"{state.ActiveTrades.Count} trades, {sessions.Packs.Count} pack sessions.");
     }
 
     /// <summary>
@@ -65,19 +48,18 @@ public static class BotStateStore
     /// <returns>
     ///     A task that represents the asynchronous operation.
     /// </returns>
-    public static async Task SaveAsync()
+    public async Task SaveAsync()
     {
-        await WriteLock.WaitAsync();
+        await _writeLock.WaitAsync();
         try
         {
             var state = new PersistedBotState
             {
-                BotActive = CommandHandler.BotActive,
-                PullCount = CommandHandler.PullCount,
-                LockedSets = [.. CommandHandler.LockedSets],
-                // Each trade is stored under both user IDs, keep it once
-                ActiveTrades = CommandHandler.ActiveTrades.Values.ToArray().Distinct().ToList(),
-                PackSessions = PullReactionHandler.ActiveSessions.Values.ToArray().Where(IsRecent).ToList(),
+                BotActive = botState.IsActive,
+                PullCount = botState.PullCount,
+                LockedSets = [.. botState.LockedSets],
+                ActiveTrades = [.. sessions.Trades],
+                PackSessions = sessions.Packs.Values.Where(IsRecent).ToList(),
             };
 
             Directory.CreateDirectory(StateDirectory);
@@ -91,7 +73,7 @@ public static class BotStateStore
         }
         finally
         {
-            WriteLock.Release();
+            _writeLock.Release();
         }
     }
 

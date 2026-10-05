@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordBot.Core;
 using DotNetEnv;
@@ -14,8 +15,6 @@ namespace DiscordBot;
 internal static class Program
 {
     private static Process _currentProcess = default!;
-    public static IServiceProvider Services { get; private set; } = default!;
-    public static DateTime StartTime { get; private set; }
 
     /// <summary>
     ///     Restarts the bot by starting a new process and killing the current one.
@@ -56,6 +55,21 @@ internal static class Program
             return;
         }
 
+        string? ownerIdText = Environment.GetEnvironmentVariable("OWNER_ID");
+        ulong? ownerId = null;
+        if (!string.IsNullOrWhiteSpace(ownerIdText))
+        {
+            if (!ulong.TryParse(ownerIdText, out ulong parsedOwnerId))
+            {
+                Console.WriteLine($"Error: OWNER_ID '{ownerIdText}' is not a Discord user ID!");
+                return;
+            }
+            ownerId = parsedOwnerId;
+        }
+        Console.WriteLine(ownerId is null
+            ? "OWNER_ID not set, owner commands are limited to the Discord application owner."
+            : $"Owner commands are limited to user {ownerId}.");
+
         Console.WriteLine("Starting Bot...");
 
         // Configure the Discord client
@@ -70,19 +84,34 @@ internal static class Program
         };
 
         var client = new DiscordSocketClient(config);
-        // Create the DI container and register services
-        Services = new ServiceCollection()
+
+        // Sync run mode keeps handling interactions one at a time, as the client events did
+        // before: user collections are plain JSON files without any locking
+        var interactions = new InteractionService(client, new InteractionServiceConfig
+        {
+            DefaultRunMode = RunMode.Sync,
+            LogLevel = LogSeverity.Info,
+        });
+
+        var services = new ServiceCollection()
+            .AddSingleton(new BotOptions(botToken, ownerId))
             .AddSingleton(client)
+            .AddSingleton(interactions)
+            .AddSingleton<CardApiClient>()
+            .AddSingleton<SetCardCache>()
+            .AddSingleton<UserRepository>()
+            .AddSingleton<BotState>()
+            .AddSingleton<SessionStore>()
+            .AddSingleton<BotStateStore>()
+            .AddSingleton<Bot>()
             .BuildServiceProvider();
 
-        var bot = new Bot(client);
         // Restore bot on/off, locked sets, pull count, trades and paid packs from before the restart
-        BotStateStore.Load();
-        _ = CardStorage.RunArchivePurgeLoopAsync();
-        await bot.StartAsync(botToken);
+        services.GetRequiredService<BotStateStore>().Load();
+        _ = services.GetRequiredService<UserRepository>().RunArchivePurgeLoopAsync();
+        await services.GetRequiredService<Bot>().StartAsync(botToken);
         // Log the bot's start time and keep the application running until the watchdog exits it
-        StartTime = DateTime.UtcNow;
-        Console.WriteLine($"Bot started at: {StartTime}");
+        Console.WriteLine($"Bot started at: {services.GetRequiredService<BotState>().StartedAtUtc}");
         await GatewayWatchdog.RunAsync(client);
     }
 
