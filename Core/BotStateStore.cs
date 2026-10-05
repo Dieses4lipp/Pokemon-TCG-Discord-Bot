@@ -1,4 +1,4 @@
-using DiscordBot.Models;
+﻿using DiscordBot.Models;
 using Newtonsoft.Json;
 
 namespace DiscordBot.Core;
@@ -9,11 +9,6 @@ namespace DiscordBot.Core;
 /// </summary>
 public sealed class BotStateStore(BotState botState, SessionStore sessions)
 {
-    /// <summary>
-    ///     Pack sessions older than this are not restored; their ephemeral messages are gone by then.
-    /// </summary>
-    private static readonly TimeSpan PackSessionMaxAge = TimeSpan.FromHours(24);
-
     private static readonly string StateDirectory = Path.Combine(UserRepository.UserCardsDirectory, "State");
     private static readonly string StateFilePath = Path.Combine(StateDirectory, "botState.json");
 
@@ -34,11 +29,12 @@ public sealed class BotStateStore(BotState botState, SessionStore sessions)
             ?? new PersistedBotState();
 
         botState.Restore(state.BotActive, state.PullCount, state.LockedSets);
-        sessions.Restore(state.PackSessions.Where(IsRecent), state.ActiveTrades);
+        sessions.Restore(state.PackSessions, state.ActiveTrades);
+        sessions.RemoveExpired(DateTime.UtcNow);
 
         Console.WriteLine(
             $"Restored bot state: active={state.BotActive}, {state.LockedSets.Count} locked sets, " +
-            $"{state.ActiveTrades.Count} trades, {sessions.Packs.Count} pack sessions.");
+            $"{sessions.Trades.Count} trades, {sessions.Packs.Count} pack sessions.");
     }
 
     /// <summary>
@@ -59,7 +55,7 @@ public sealed class BotStateStore(BotState botState, SessionStore sessions)
                 PullCount = botState.PullCount,
                 LockedSets = [.. botState.LockedSets],
                 ActiveTrades = [.. sessions.Trades],
-                PackSessions = sessions.Packs.Values.Where(IsRecent).ToList(),
+                PackSessions = [.. sessions.Packs.Values],
             };
 
             Directory.CreateDirectory(StateDirectory);
@@ -76,7 +72,4 @@ public sealed class BotStateStore(BotState botState, SessionStore sessions)
             _writeLock.Release();
         }
     }
-
-    private static bool IsRecent(PackSession session) =>
-        DateTime.UtcNow - session.CreatedAtUtc <= PackSessionMaxAge;
 }

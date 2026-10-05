@@ -103,12 +103,14 @@ internal static class Program
             .AddSingleton<BotState>()
             .AddSingleton<SessionStore>()
             .AddSingleton<BotStateStore>()
+            .AddSingleton<SessionCleanup>()
             .AddSingleton<Bot>()
             .BuildServiceProvider();
 
         // Restore bot on/off, locked sets, pull count, trades and paid packs from before the restart
         services.GetRequiredService<BotStateStore>().Load();
         _ = services.GetRequiredService<UserRepository>().RunArchivePurgeLoopAsync();
+        _ = services.GetRequiredService<SessionCleanup>().RunAsync();
         await services.GetRequiredService<Bot>().StartAsync(botToken);
         // Log the bot's start time and keep the application running until the watchdog exits it
         Console.WriteLine($"Bot started at: {services.GetRequiredService<BotState>().StartedAtUtc}");

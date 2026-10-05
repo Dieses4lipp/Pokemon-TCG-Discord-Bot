@@ -44,4 +44,9 @@ public class TradeSession(ulong senderId, ulong receiverId, Card cardToTrade, Ca
     ///     Gets the amount of money requested, if any.
     /// </summary>
     public double MoneyToReceive { get; } = moneyToReceive;
+
+    /// <summary>
+    ///     Gets or sets when the trade was proposed, used to expire trades nobody answers.
+    /// </summary>
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
