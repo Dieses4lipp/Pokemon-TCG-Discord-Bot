@@ -1,6 +1,5 @@
 ﻿using System.Diagnostics;
 using Discord;
-using Discord.Commands;
 using Discord.WebSocket;
 using DiscordBot.Core;
 using DotNetEnv;
@@ -15,7 +14,6 @@ namespace DiscordBot;
 internal static class Program
 {
     private static Process _currentProcess = default!;
-    public static CommandService Commands { get; set; } = default!;
     public static IServiceProvider Services { get; private set; } = default!;
     public static DateTime StartTime { get; private set; }
 
@@ -48,8 +46,8 @@ internal static class Program
     /// </returns>
     public static async Task RunBotAsync()
     {
-        // Load environment variables from .env file
-        Env.Load();
+        // Load environment variables from the nearest .env file in the working directory or above
+        Env.TraversePath().Load();
         string? botToken = Environment.GetEnvironmentVariable("TOKEN");
 
         if (string.IsNullOrEmpty(botToken))
@@ -66,25 +64,15 @@ internal static class Program
             // GuildMembers is privileged: it must also be enabled in the Discord Developer Portal,
             // otherwise the login fails. It is needed for the UserLeft event.
             GatewayIntents = GatewayIntents.Guilds |
-                             GatewayIntents.GuildMembers |
-                             GatewayIntents.GuildMessages |
-                             GatewayIntents.MessageContent |
-                             GatewayIntents.GuildMessageReactions,
+                             GatewayIntents.GuildMembers,
             HandlerTimeout = null,
             ConnectionTimeout = 30000,
         };
 
         var client = new DiscordSocketClient(config);
-        Commands = new CommandService(new CommandServiceConfig
-        {
-            DefaultRunMode = RunMode.Async,
-            LogLevel = LogSeverity.Verbose
-        });
-
         // Create the DI container and register services
         Services = new ServiceCollection()
             .AddSingleton(client)
-            .AddSingleton(Commands)
             .BuildServiceProvider();
 
         var bot = new Bot(client);
