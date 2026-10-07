@@ -73,7 +73,7 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
 
    ```env
    TOKEN=your_new_discord_bot_token_here
-   # Optional: Discord user ID allowed to run /lockset, /unlockset, /turnon, /turnoff and /restart.
+   # Optional: Discord user ID allowed to run the admin commands (/lockset, /addbalance, /restart, ...).
    # Defaults to the owner of the Discord application.
    OWNER_ID=your_discord_user_id
    ```
@@ -175,6 +175,18 @@ Once the bot is running and added to your Discord server, interact with it using
 
 - **`/turnon` / `/turnoff`**  
   Turns the bot on or off, enabling or disabling command processing. *(Admin only)*
+
+- **`/addbalance [user] [amount]` / `/setbalance [user] [amount]`**  
+  Adds to (negative amounts remove from) or sets a user's balance. The balance can't go below 0. *(Admin only)*
+
+- **`/givecard [user] [card-id]`**  
+  Adds a card to a user's collection by its TCGdex card ID, e.g. `swsh1-25`. *(Admin only)*
+
+- **`/removecard [user] [card-name]`**  
+  Removes one copy of a card from a user's collection. Cards on an expedition can't be removed. *(Admin only)*
+
+- **`/userinfo [user]`**  
+  Shows a user's balance, collection size, stats, favorite card and running expedition. *(Admin only)*
 
 - **`/stats`**  
   Displays various statistics about the bot’s usage and performance. *(Admin only)*

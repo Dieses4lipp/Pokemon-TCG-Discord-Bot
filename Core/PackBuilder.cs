@@ -21,13 +21,22 @@ public static class PackBuilder
     /// <param name="random">
     ///     The random number generator used for all rolls.
     /// </param>
+    /// <param name="rarityOf">
+    ///     Gets the rarity a card is rolled as; defaults to <see cref="Card.Rarity"/>.
+    /// </param>
     /// <returns>
     ///     The cards of the pack, in slot order.
     /// </returns>
-    public static List<Card> BuildPack(PackProfile profile, List<Card> setCards, Random random)
+    public static List<Card> BuildPack(
+        PackProfile profile,
+        List<Card> setCards,
+        Random random,
+        Func<Card, string>? rarityOf = null)
     {
+        rarityOf ??= OwnRarity;
+
         var cardsByRarity = setCards
-            .GroupBy(c => c.Rarity ?? string.Empty, StringComparer.OrdinalIgnoreCase)
+            .GroupBy(rarityOf, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
 
         var pack = new List<Card>(profile.CardsPerPack);
@@ -66,11 +75,19 @@ public static class PackBuilder
     /// <param name="setCards">
     ///     The cards of the set.
     /// </param>
+    /// <param name="rarityOf">
+    ///     Gets the rarity a card is rolled as; defaults to <see cref="Card.Rarity"/>.
+    /// </param>
     /// <returns>
     ///     The distinct rarities of the set not covered by the profile.
     /// </returns>
-    public static List<string> GetUncoveredRarities(PackProfile profile, List<Card> setCards)
+    public static List<string> GetUncoveredRarities(
+        PackProfile profile,
+        List<Card> setCards,
+        Func<Card, string>? rarityOf = null)
     {
+        rarityOf ??= OwnRarity;
+
         if (profile.Slots.Any(s => s.Rarities.ContainsKey(PackSlot.AnyRarity)))
             return [];
 
@@ -79,11 +96,39 @@ public static class PackBuilder
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         return setCards
-            .Select(c => c.Rarity ?? string.Empty)
+            .Select(rarityOf)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Where(r => !covered.Contains(r))
             .ToList();
     }
+
+    /// <summary>
+    ///     Builds a rarity lookup that takes each card's rarity from the English version of the
+    ///     set, matched by the card's number. The card API translates rarity names, so localized
+    ///     cards would never match the English names in the pack settings.
+    /// </summary>
+    /// <param name="englishCards">
+    ///     The cards of the same set in English.
+    /// </param>
+    /// <returns>
+    ///     A lookup returning the English rarity, or the card's own rarity if the English set has
+    ///     no card with that number.
+    /// </returns>
+    public static Func<Card, string> EnglishRarityLookup(IEnumerable<Card> englishCards)
+    {
+        var rarityByLocalId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var card in englishCards)
+        {
+            if (!string.IsNullOrEmpty(card.LocalId) && !string.IsNullOrEmpty(card.Rarity))
+                rarityByLocalId.TryAdd(card.LocalId, card.Rarity);
+        }
+
+        return card => card.LocalId != null && rarityByLocalId.TryGetValue(card.LocalId, out var rarity)
+            ? rarity
+            : OwnRarity(card);
+    }
+
+    private static string OwnRarity(Card card) => card.Rarity ?? string.Empty;
 
     /// <summary>
     ///     Rolls one rarity, weighted by the given chances (which need not add up to 100).

@@ -192,7 +192,7 @@
       ]
     },
     "bw-sm": {
-      "description": "Black & White / XY / Sun & Moon: 10 cards, EX / GX / full art / secret hits",
+      "description": "Black & White / XY / Sun & Moon: 10 cards, EX / GX / full art / secret hits (rare slot from Elite Fourum Sun & Moon pack samples; TCGdex has no separate holo rarity here)",
       "cardsPerPack": 10,
       "packPrice": 5.0,
       "slots": [
@@ -223,10 +223,9 @@
           "name": "Rare",
           "count": 1,
           "rarities": {
-            "Rare": 58,
-            "Rare Holo": 27,
-            "Ultra Rare": 12,
-            "Secret Rare": 3
+            "Rare": 84,
+            "Ultra Rare": 15,
+            "Secret Rare": 1
           }
         }
       ]
@@ -391,6 +390,99 @@
         }
       ]
     },
+    "det": {
+      "description": "Detective Pikachu: 4 cards, 1 rare slot with GX hits",
+      "cardsPerPack": 4,
+      "packPrice": 3.0,
+      "slots": [
+        {
+          "name": "Common",
+          "count": 3,
+          "rarities": {
+            "Common": 100
+          }
+        },
+        {
+          "name": "Rare",
+          "count": 1,
+          "rarities": {
+            "Rare": 75,
+            "Ultra Rare": 25
+          }
+        }
+      ]
+    },
+    "dc": {
+      "description": "Double Crisis: 7 cards, 1 rare slot with EX hits",
+      "cardsPerPack": 7,
+      "packPrice": 4.0,
+      "slots": [
+        {
+          "name": "Common",
+          "count": 4,
+          "rarities": {
+            "Common": 100
+          }
+        },
+        {
+          "name": "Uncommon",
+          "count": 2,
+          "rarities": {
+            "Uncommon": 100
+          }
+        },
+        {
+          "name": "Rare",
+          "count": 1,
+          "rarities": {
+            "Rare": 75,
+            "Ultra Rare": 25
+          }
+        }
+      ]
+    },
+    "any-4": {
+      "description": "Celebrations / McDonald's 2021: 4 cards, any card of the set",
+      "cardsPerPack": 4,
+      "packPrice": 3.0,
+      "slots": [
+        {
+          "name": "Any",
+          "count": 4,
+          "rarities": {
+            "*": 100
+          }
+        }
+      ]
+    },
+    "any-5": {
+      "description": "Dragon Vault: 5 cards, all holo, any card of the set",
+      "cardsPerPack": 5,
+      "packPrice": 3.0,
+      "slots": [
+        {
+          "name": "Any",
+          "count": 5,
+          "rarities": {
+            "*": 100
+          }
+        }
+      ]
+    },
+    "single": {
+      "description": "McDonald's 2011-2019: one card per Happy Meal",
+      "cardsPerPack": 1,
+      "packPrice": 1.0,
+      "slots": [
+        {
+          "name": "Card",
+          "count": 1,
+          "rarities": {
+            "*": 100
+          }
+        }
+      ]
+    },
     "mixed": {
       "description": "Promos, trainer kits, McDonald's and other sets without a real booster layout: any card of the set",
       "cardsPerPack": 10,
@@ -408,39 +500,39 @@
   },
   "sets": {
     "2011bw": {
-      "profile": "mixed",
+      "profile": "single",
       "covers": []
     },
     "2012bw": {
-      "profile": "mixed",
+      "profile": "single",
       "covers": []
     },
     "2014xy": {
-      "profile": "mixed",
+      "profile": "single",
       "covers": []
     },
     "2015xy": {
-      "profile": "mixed",
+      "profile": "single",
       "covers": []
     },
     "2016xy": {
-      "profile": "mixed",
+      "profile": "single",
       "covers": []
     },
     "2017sm": {
-      "profile": "mixed",
+      "profile": "single",
       "covers": []
     },
     "2018sm": {
-      "profile": "mixed",
+      "profile": "single",
       "covers": []
     },
     "2019sm": {
-      "profile": "mixed",
+      "profile": "single",
       "covers": []
     },
     "2021swsh": {
-      "profile": "mixed",
+      "profile": "any-4",
       "covers": []
     },
     "a1": {
@@ -686,7 +778,7 @@
       ]
     },
     "cel25": {
-      "profile": "swsh",
+      "profile": "any-4",
       "covers": [
         "1.jpg"
       ]
@@ -701,14 +793,14 @@
       ]
     },
     "dc1": {
-      "profile": "bw-sm",
+      "profile": "dc",
       "covers": [
         "1.jpg",
         "2.jpg"
       ]
     },
     "det1": {
-      "profile": "bw-sm",
+      "profile": "det",
       "covers": [
         "1.jpg"
       ]
@@ -783,7 +875,7 @@
       ]
     },
     "dv1": {
-      "profile": "bw-sm",
+      "profile": "any-5",
       "covers": [
         "1.jpg",
         "2.jpg",

@@ -129,4 +129,45 @@ public class PackBuilderTests
 
         Assert.Empty(PackBuilder.GetUncoveredRarities(profile, MixedSet));
     }
+
+    private static Card MakeLocalizedCard(string localId, string name, string rarity) =>
+        new() { LocalId = localId, Name = name, Rarity = rarity };
+
+    private static readonly List<Card> EnglishSet =
+    [
+        MakeLocalizedCard("001", "Pineco", "Common"),
+        MakeLocalizedCard("002", "Forretress ex", "Double rare"),
+    ];
+
+    private static readonly List<Card> GermanSet =
+    [
+        MakeLocalizedCard("001", "Tannza", "Häufig"),
+        MakeLocalizedCard("002", "Forstellka-ex", "Doppelselten"),
+        MakeLocalizedCard("999", "Nur auf Deutsch", "Selten"),
+    ];
+
+    [Fact]
+    public void EnglishRarityLookup_MapsLocalizedCardsByNumber()
+    {
+        var rarityOf = PackBuilder.EnglishRarityLookup(EnglishSet);
+
+        Assert.Equal("Common", rarityOf(GermanSet[0]));
+        Assert.Equal("Double rare", rarityOf(GermanSet[1]));
+        Assert.Equal("Selten", rarityOf(GermanSet[2]));
+    }
+
+    [Fact]
+    public void BuildPack_RollsLocalizedCardsByTheirEnglishRarity()
+    {
+        var profile = MakeProfile(
+            MakeSlot("Common", 10, ("Common", 100)),
+            MakeSlot("Rare", 10, ("Double rare", 100)));
+        var rarityOf = PackBuilder.EnglishRarityLookup(EnglishSet);
+
+        var pack = PackBuilder.BuildPack(profile, GermanSet, new Random(8), rarityOf);
+
+        Assert.All(pack.Take(10), c => Assert.Equal("Tannza", c.Name));
+        Assert.All(pack.Skip(10), c => Assert.Equal("Forstellka-ex", c.Name));
+        Assert.Equal(new[] { "Selten" }, PackBuilder.GetUncoveredRarities(profile, GermanSet, rarityOf));
+    }
 }

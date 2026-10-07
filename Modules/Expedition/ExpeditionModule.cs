@@ -63,31 +63,10 @@ public sealed class ExpeditionModule(
             return;
         }
 
-        // Card ownership validation - resolve each requested name to a distinct, unlocked owned
-        // card. Tracked by list index (not value equality) so duplicate identical copies can each
-        // be selected once.
-        var selectedCards = new List<Card>();
-        var pickedIndices = new HashSet<int>();
-
-        foreach (var name in requestedNames)
+        if (!ExpeditionCards.TrySelect(collection.Cards, requestedNames, out var selectedCards, out var missingName))
         {
-            var matchIndex = collection.Cards.FindIndex(c =>
-                c.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && !c.IsLocked);
-
-            while (matchIndex != -1 && pickedIndices.Contains(matchIndex))
-            {
-                matchIndex = collection.Cards.FindIndex(matchIndex + 1, c =>
-                    c.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && !c.IsLocked);
-            }
-
-            if (matchIndex == -1)
-            {
-                await FollowupAsync($"❌ You don't own an available (unlocked) card named `{name}`.", ephemeral: true);
-                return;
-            }
-
-            pickedIndices.Add(matchIndex);
-            selectedCards.Add(collection.Cards[matchIndex]);
+            await FollowupAsync($"❌ You don't own an available (unlocked) card named `{missingName}`.", ephemeral: true);
+            return;
         }
 
         // Lock the selected cards so they can't be sold/traded while away
@@ -211,25 +190,7 @@ public sealed class ExpeditionModule(
             rewardText += "\n🃏 " + string.Join(", ", rewardCards.Select(c => $"`{c.Name}` ({c.Rarity})"));
         }
 
-        // Unlock the cards that were sent on the expedition (matched by Name+Rarity against the
-        // still-locked entries, by index so duplicate copies each get unlocked exactly once).
-        var unlockedIndices = new HashSet<int>();
-        foreach (var sentCard in expedition.SentCards)
-        {
-            var matchIndex = collection.Cards.FindIndex(c =>
-                c.IsLocked && c.Name == sentCard.Name && c.Rarity == sentCard.Rarity);
-
-            while (matchIndex != -1 && unlockedIndices.Contains(matchIndex))
-            {
-                matchIndex = collection.Cards.FindIndex(matchIndex + 1, c =>
-                    c.IsLocked && c.Name == sentCard.Name && c.Rarity == sentCard.Rarity);
-            }
-
-            if (matchIndex == -1) continue;
-
-            collection.Cards[matchIndex].IsLocked = false;
-            unlockedIndices.Add(matchIndex);
-        }
+        ExpeditionCards.Unlock(collection.Cards, expedition.SentCards);
 
         // Reset the expedition so a new one can be started
         collection.ActiveExpedition = null;

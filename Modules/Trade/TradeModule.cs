@@ -130,73 +130,17 @@ public sealed class TradeModule(SessionStore sessions, BotStateStore stateStore,
         var senderCol = await users.LoadUserCardsAsync(session.SenderId);
         var receiverCol = await users.LoadUserCardsAsync(session.ReceiverId);
 
-        var cardFromSender = senderCol.Cards.FirstOrDefault(c =>
-            c.Name == session.CardToTrade.Name && c.Rarity == session.CardToTrade.Rarity);
-
-        if (cardFromSender == null)
+        var result = TradeSwap.Execute(session, senderCol, receiverCol);
+        if (result.Failure is { } failure)
         {
-            await FollowupAsync("❌ The sender's card is no longer in their inventory. Trade cancelled.");
+            await FollowupAsync(DescribeFailure(failure, session));
             return;
         }
 
-        if (cardFromSender.IsLocked)
-        {
-            await FollowupAsync($"🔒 `{cardFromSender.Name}` got locked (on an expedition) in the meantime. Trade cancelled.");
-            return;
-        }
-
-        Card? cardFromReceiver = null;
-        if (session.CardToReceive != null)
-        {
-            cardFromReceiver = receiverCol.Cards.FirstOrDefault(c =>
-                c.Name == session.CardToReceive.Name && c.Rarity == session.CardToReceive.Rarity);
-
-            if (cardFromReceiver == null)
-            {
-                await FollowupAsync("❌ The requested card is no longer in your inventory. Trade cancelled.");
-                return;
-            }
-
-            if (cardFromReceiver.IsLocked)
-            {
-                await FollowupAsync($"🔒 `{cardFromReceiver.Name}` got locked (on an expedition) in the meantime. Trade cancelled.");
-                return;
-            }
-        }
-
-        if (session.MoneyToReceive > 0 && receiverCol.Balance < session.MoneyToReceive)
-        {
-            await FollowupAsync("❌ You no longer have enough balance to complete this trade. Trade cancelled.");
-            return;
-        }
-
-        // PERFORM THE SWAP
-        senderCol.Cards.Remove(cardFromSender);
-        receiverCol.Cards.Add(cardFromSender);
-
+        var cardFromSender = result.CardFromSender!;
         var senderReceivedText = string.Empty;
-
-        if (cardFromReceiver != null)
-        {
-            receiverCol.Cards.Remove(cardFromReceiver);
-            senderCol.Cards.Add(cardFromReceiver);
-            senderReceivedText += $"`{cardFromReceiver.Name}`\n";
-            CheckAndClearFavorite(receiverCol, cardFromReceiver);
-        }
-
-        if (session.MoneyToReceive > 0)
-        {
-            receiverCol.Balance -= session.MoneyToReceive;
-            senderCol.Balance += session.MoneyToReceive;
-            senderReceivedText += $"💰 {session.MoneyToReceive:F2}\n";
-        }
-
-        // Update stats
-        senderCol.CardsTraded++;
-        receiverCol.CardsTraded++;
-
-        // Clean up Favorites (If they traded away their favorite card)
-        CheckAndClearFavorite(senderCol, cardFromSender);
+        if (result.CardFromReceiver != null) senderReceivedText += $"`{result.CardFromReceiver.Name}`\n";
+        if (session.MoneyToReceive > 0) senderReceivedText += $"💰 {session.MoneyToReceive:F2}\n";
 
         await users.SaveUserCardsAsync(senderCol);
         await users.SaveUserCardsAsync(receiverCol);
@@ -242,22 +186,12 @@ public sealed class TradeModule(SessionStore sessions, BotStateStore stateStore,
         await FollowupAsync(embed: embed);
     }
 
-    /// <summary>
-    ///     Clears favorite card if it was traded
-    /// </summary>
-    /// <param name="col">
-    ///     The collection of the user
-    /// </param>
-    /// <param name="tradedCard">
-    ///     The card traded
-    /// </param>
-    private static void CheckAndClearFavorite(UserCardCollection col, Card tradedCard)
+    private static string DescribeFailure(TradeFailure failure, TradeSession session) => failure switch
     {
-        if (col.FavoriteCard != null &&
-            col.FavoriteCard.Name == tradedCard.Name &&
-            col.FavoriteCard.Rarity == tradedCard.Rarity)
-        {
-            col.FavoriteCard = null;
-        }
-    }
+        TradeFailure.SenderCardMissing => "❌ The sender's card is no longer in their inventory. Trade cancelled.",
+        TradeFailure.SenderCardLocked => $"🔒 `{session.CardToTrade.Name}` got locked (on an expedition) in the meantime. Trade cancelled.",
+        TradeFailure.ReceiverCardMissing => "❌ The requested card is no longer in your inventory. Trade cancelled.",
+        TradeFailure.ReceiverCardLocked => $"🔒 `{session.CardToReceive?.Name}` got locked (on an expedition) in the meantime. Trade cancelled.",
+        _ => "❌ You no longer have enough balance to complete this trade. Trade cancelled.",
+    };
 }
