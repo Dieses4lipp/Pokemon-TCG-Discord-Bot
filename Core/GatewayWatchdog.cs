@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.WebSocket;
+using Microsoft.Extensions.Logging;
 
 namespace DiscordBot.Core;
 
@@ -23,10 +24,13 @@ public static class GatewayWatchdog
     /// <param name="client">
     ///     The Discord client to watch.
     /// </param>
+    /// <param name="logger">
+    ///     The logger the exit reason is written to.
+    /// </param>
     /// <returns>
     ///     A task that never completes unless the process exits.
     /// </returns>
-    public static async Task RunAsync(DiscordSocketClient client)
+    public static async Task RunAsync(DiscordSocketClient client, ILogger logger)
     {
         DateTime? notConnectedSince = null;
 
@@ -44,7 +48,7 @@ public static class GatewayWatchdog
 
             if (DateTime.UtcNow - notConnectedSince > MaxNotConnected)
             {
-                Console.WriteLine($"Watchdog: gateway state {client.ConnectionState} since {notConnectedSince:O}, exiting");
+                logger.LogCritical("Gateway state {ConnectionState} since {NotConnectedSince:O}, exiting", client.ConnectionState, notConnectedSince);
                 Environment.Exit(1);
             }
         }

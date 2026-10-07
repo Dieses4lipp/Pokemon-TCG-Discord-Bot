@@ -3,6 +3,7 @@ using Discord;
 using Discord.Interactions;
 using DiscordBot.Core;
 using DiscordBot.Preconditions;
+using Microsoft.Extensions.Logging;
 
 namespace DiscordBot.Modules.Trainer;
 
@@ -10,7 +11,11 @@ namespace DiscordBot.Modules.Trainer;
 ///     The read-only trainer commands: /stats, /profile and /sets.
 /// </summary>
 [RequireBotActive]
-public sealed class TrainerModule(BotState botState, UserRepository users, CardApiClient api)
+public sealed class TrainerModule(
+    BotState botState,
+    UserRepository users,
+    CardApiClient api,
+    ILogger<TrainerModule> logger)
     : InteractionModuleBase<SocketInteractionContext>
 {
     [SlashCommand("stats", "Displays bot statistics.")]
@@ -118,12 +123,12 @@ public sealed class TrainerModule(BotState botState, UserRepository users, CardA
         }
         catch (ArgumentException ex)
         {
-            Console.WriteLine($"Error building response embed: {ex.Message}");
+            logger.LogError(ex, "Error building /sets response embed");
             await FollowupAsync("⚠️ An error occured while building the response message.");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Set Fetch Error: {ex.Message}");
+            logger.LogError(ex, "Failed to fetch sets for /sets");
             await FollowupAsync("⚠️ An error occurred while contacting the TCG API.");
         }
     }

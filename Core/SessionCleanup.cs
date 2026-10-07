@@ -1,10 +1,12 @@
+using Microsoft.Extensions.Logging;
+
 namespace DiscordBot.Core;
 
 /// <summary>
 ///     Periodically drops expired sessions, so abandoned pack views, inventory views and
 ///     unanswered trades do not pile up in memory and in the state file.
 /// </summary>
-public sealed class SessionCleanup(SessionStore sessions, BotStateStore stateStore)
+public sealed class SessionCleanup(SessionStore sessions, BotStateStore stateStore, ILogger<SessionCleanup> logger)
 {
     private static readonly TimeSpan CheckInterval = TimeSpan.FromMinutes(15);
 
@@ -27,7 +29,7 @@ public sealed class SessionCleanup(SessionStore sessions, BotStateStore stateSto
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to clean up expired sessions: {ex}");
+                logger.LogError(ex, "Failed to clean up expired sessions");
             }
         }
     }

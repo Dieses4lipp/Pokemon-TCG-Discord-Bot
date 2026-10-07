@@ -1,4 +1,5 @@
 ﻿using DiscordBot.Models;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace DiscordBot.Core;
@@ -7,7 +8,7 @@ namespace DiscordBot.Core;
 ///     Persists the runtime state (bot on/off, locked sets, pull count, pending trades and paid
 ///     pack sessions) to a JSON file on the data volume, so a restart or redeploy does not lose it.
 /// </summary>
-public sealed class BotStateStore(BotState botState, SessionStore sessions)
+public sealed class BotStateStore(BotState botState, SessionStore sessions, ILogger<BotStateStore> logger)
 {
     private static readonly string StateDirectory = Path.Combine(UserRepository.UserCardsDirectory, "State");
     private static readonly string StateFilePath = Path.Combine(StateDirectory, "botState.json");
@@ -21,7 +22,7 @@ public sealed class BotStateStore(BotState botState, SessionStore sessions)
     {
         if (!File.Exists(StateFilePath))
         {
-            Console.WriteLine("No saved bot state found, starting with defaults.");
+            logger.LogInformation("No saved bot state found, starting with defaults");
             return;
         }
 
@@ -32,9 +33,9 @@ public sealed class BotStateStore(BotState botState, SessionStore sessions)
         sessions.Restore(state.PackSessions, state.ActiveTrades);
         sessions.RemoveExpired(DateTime.UtcNow);
 
-        Console.WriteLine(
-            $"Restored bot state: active={state.BotActive}, {state.LockedSets.Count} locked sets, " +
-            $"{sessions.Trades.Count} trades, {sessions.Packs.Count} pack sessions.");
+        logger.LogInformation(
+            "Restored bot state: active={BotActive}, {LockedSetCount} locked sets, {TradeCount} trades, {PackSessionCount} pack sessions",
+            state.BotActive, state.LockedSets.Count, sessions.Trades.Count, sessions.Packs.Count);
     }
 
     /// <summary>
@@ -65,7 +66,7 @@ public sealed class BotStateStore(BotState botState, SessionStore sessions)
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to save bot state: {ex}");
+            logger.LogError(ex, "Failed to save bot state");
         }
         finally
         {

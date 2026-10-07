@@ -4,6 +4,7 @@ using DiscordBot.Core;
 using DiscordBot.Events.Expedition;
 using DiscordBot.Models;
 using DiscordBot.Preconditions;
+using Microsoft.Extensions.Logging;
 
 namespace DiscordBot.Modules.Expedition;
 
@@ -12,7 +13,11 @@ namespace DiscordBot.Modules.Expedition;
 /// </summary>
 [Group("expedition", "Send cards on an expedition.")]
 [RequireBotActive]
-public sealed class ExpeditionModule(BotState botState, UserRepository users, CardApiClient api)
+public sealed class ExpeditionModule(
+    BotState botState,
+    UserRepository users,
+    CardApiClient api,
+    ILogger<ExpeditionModule> logger)
     : InteractionModuleBase<SocketInteractionContext>
 {
     private static readonly Random _random = new();
@@ -253,7 +258,7 @@ public sealed class ExpeditionModule(BotState botState, UserRepository users, Ca
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to pick random expedition reward set: {ex.Message}");
+            logger.LogError(ex, "Failed to pick random expedition reward set");
             return null;
         }
     }

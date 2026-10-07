@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using DiscordBot.Models;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -8,7 +9,7 @@ namespace DiscordBot.Core;
 /// <summary>
 ///     Talks to the TCGdex card API.
 /// </summary>
-public sealed class CardApiClient
+public sealed class CardApiClient(ILogger<CardApiClient> logger)
 {
     private const string ApiLangUrl = "https://api.tcgdex.net/v2/";
     private const string SetsApiUrl = "https://api.tcgdex.net/v2/en/sets";
@@ -95,7 +96,7 @@ public sealed class CardApiClient
             string response = await _httpClient.GetStringAsync(requestUrl);
             stopwatch.Stop();
             LastApiLatency = stopwatch.ElapsedMilliseconds;
-            Console.WriteLine($"API Latency: {LastApiLatency}ms");
+            logger.LogDebug("Set {SetId} ({Language}) loaded in {LatencyMs} ms", setId, language, LastApiLatency);
 
             // Parse into JToken and try to locate an array of card briefs/ids
             var token = JToken.Parse(response);
@@ -127,7 +128,7 @@ public sealed class CardApiClient
 
             if (cardArray == null)
             {
-                Console.WriteLine("No card array found in API response.");
+                logger.LogWarning("No card array found in API response for set {SetId} ({Language})", setId, language);
                 return [];
             }
 
@@ -146,14 +147,14 @@ public sealed class CardApiClient
 
             if (cardIds.Count == 0)
             {
-                Console.WriteLine("No card ids found in card array.");
+                logger.LogWarning("No card ids found in card array of set {SetId} ({Language})", setId, language);
             }
 
             return cardIds;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to get cards of set {setId}: {ex}");
+            logger.LogError(ex, "Failed to get cards of set {SetId} ({Language})", setId, language);
             return [];
         }
     }
@@ -227,7 +228,7 @@ public sealed class CardApiClient
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to fetch detailed card {id}: {ex.Message}");
+            logger.LogWarning(ex, "Failed to fetch detailed card {CardId} ({Language})", id, language);
             return null;
         }
     }
