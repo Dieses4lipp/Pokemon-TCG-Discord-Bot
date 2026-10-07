@@ -1,4 +1,6 @@
-﻿namespace DiscordBot.Models;
+﻿using Newtonsoft.Json;
+
+namespace DiscordBot.Models;
 
 /// <summary>
 ///     Represents the pack configuration of a single set.
@@ -15,4 +17,11 @@ public class SetPackConfig
     ///     random per pack; empty means the default cover is used.
     /// </summary>
     public List<string> Covers { get; set; } = [];
+
+    /// <summary>
+    ///     Gets or sets the name of the set's cover folder: the set ID exactly as configured, which
+    ///     can differ in casing from the ID the card API reports. Set when the settings are loaded.
+    /// </summary>
+    [JsonIgnore]
+    public string Folder { get; set; } = default!;
 }

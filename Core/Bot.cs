@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using Microsoft.Extensions.Logging;
 
 namespace DiscordBot.Core;
 
@@ -11,7 +12,8 @@ public sealed class Bot(
     DiscordSocketClient client,
     InteractionService interactions,
     IServiceProvider services,
-    UserRepository users)
+    UserRepository users,
+    ILogger<Bot> logger)
 {
     private bool _commandsRegistered;
 
@@ -41,7 +43,7 @@ public sealed class Bot(
 
         await interactions.AddModulesAsync(typeof(Bot).Assembly, services);
 
-        Console.WriteLine("Starting bot...");
+        logger.LogInformation("Logging in to Discord");
         await client.LoginAsync(TokenType.Bot, botToken);
         await client.StartAsync();
     }
@@ -74,8 +76,10 @@ public sealed class Bot(
             return;
         }
 
-        string error = result is ExecuteResult { Exception: { } exception } ? exception.ToString() : result.ErrorReason;
-        Console.WriteLine($"Error handling interaction '{DescribeInteraction(interaction)}': {error}");
+        if (result is ExecuteResult { Exception: { } exception })
+            logger.LogError(exception, "Error handling interaction '{Interaction}'", DescribeInteraction(interaction));
+        else
+            logger.LogError("Error handling interaction '{Interaction}': {Reason}", DescribeInteraction(interaction), result.ErrorReason);
 
         // Autocomplete requests cannot carry a message
         if (interaction is not SocketAutocompleteInteraction)
@@ -100,7 +104,7 @@ public sealed class Bot(
     /// <param name="message">
     ///     The error message shown to the user
     /// </param>
-    private static async Task ReportErrorAsync(SocketInteraction interaction, string message)
+    private async Task ReportErrorAsync(SocketInteraction interaction, string message)
     {
         try
         {
@@ -111,7 +115,7 @@ public sealed class Bot(
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to report error to user: {ex.Message}");
+            logger.LogWarning(ex, "Failed to report error to user");
         }
     }
 
@@ -142,11 +146,11 @@ public sealed class Bot(
             try
             {
                 await RegisterGuildCommandsAsync(guild);
-                Console.WriteLine($"Registered slash commands for guild {guild.Name} ({guild.Id}).");
+                logger.LogInformation("Registered slash commands for guild {GuildName} ({GuildId})", guild.Name, guild.Id);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to register slash commands for guild {guild.Name} ({guild.Id}): {ex}");
+                logger.LogError(ex, "Failed to register slash commands for guild {GuildName} ({GuildId})", guild.Name, guild.Id);
             }
         }
     }
@@ -166,18 +170,18 @@ public sealed class Bot(
     {
         if (users.ArchiveUserCards(user.Id))
         {
-            Console.WriteLine($"Archived JSON file for user {user.Username} ({user.Id}).");
+            logger.LogInformation("Archived JSON file for user {Username} ({UserId})", user.Username, user.Id);
         }
         else
         {
-            Console.WriteLine($"No JSON file found for user {user.Username} ({user.Id}).");
+            logger.LogInformation("No JSON file found for user {Username} ({UserId})", user.Username, user.Id);
         }
 
         return Task.CompletedTask;
     }
 
     /// <summary>
-    ///     Logs messages to the console.
+    ///     Forwards Discord.Net log messages to the logger.
     /// </summary>
     /// <param name="logMessage">
     ///     The log message to log.
@@ -187,7 +191,16 @@ public sealed class Bot(
     /// </returns>
     private Task Log(LogMessage logMessage)
     {
-        Console.WriteLine(logMessage);
+        var level = logMessage.Severity switch
+        {
+            LogSeverity.Critical => LogLevel.Critical,
+            LogSeverity.Error => LogLevel.Error,
+            LogSeverity.Warning => LogLevel.Warning,
+            LogSeverity.Info => LogLevel.Information,
+            LogSeverity.Verbose => LogLevel.Debug,
+            _ => LogLevel.Trace,
+        };
+        logger.Log(level, logMessage.Exception, "{Source}: {Message}", logMessage.Source, logMessage.Message);
         return Task.CompletedTask;
     }
 
@@ -199,7 +212,7 @@ public sealed class Bot(
     /// </returns>
     private Task OnReady()
     {
-        Console.WriteLine("Bot is online and ready!");
+        logger.LogInformation("Bot is online and ready");
         return Task.CompletedTask;
     }
 }

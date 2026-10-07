@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using DiscordBot.Models;
+using Microsoft.Extensions.Logging;
 
 namespace DiscordBot.Core;
 
@@ -7,7 +8,7 @@ namespace DiscordBot.Core;
 ///     Caches the full card list of a set per language in memory, so a pack pull only hits the
 ///     card API once per set and cache period instead of once per card on every pull.
 /// </summary>
-public sealed class SetCardCache(CardApiClient api)
+public sealed class SetCardCache(CardApiClient api, ILogger<SetCardCache> logger)
 {
     /// <summary>
     ///     How long a loaded set stays cached; also bounds how stale card prices can get.
@@ -67,7 +68,8 @@ public sealed class SetCardCache(CardApiClient api)
         var cardIds = await api.FetchSetCardIdsAsync(setId, language);
         var cards = await api.FetchCardDetailsAsync(cardIds, language);
 
-        Console.WriteLine($"Loaded {cards.Count}/{cardIds.Count} cards of set '{setId}' ({language}) into the cache.");
+        logger.LogInformation("Loaded {LoadedCount}/{CardCount} cards of set '{SetId}' ({Language}) into the cache",
+            cards.Count, cardIds.Count, setId, language);
         return (DateTime.UtcNow, cards);
     }
 }

@@ -5,6 +5,7 @@ using Discord.WebSocket;
 using DiscordBot.Core;
 using DotNetEnv;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace DiscordBot;
 
@@ -45,13 +46,20 @@ internal static class Program
     /// </returns>
     public static async Task RunBotAsync()
     {
+        using var loggerFactory = LoggerFactory.Create(logging => logging.AddSimpleConsole(options =>
+        {
+            options.SingleLine = true;
+            options.TimestampFormat = "yyyy-MM-dd HH:mm:ss ";
+        }));
+        var logger = loggerFactory.CreateLogger(typeof(Program));
+
         // Load environment variables from the nearest .env file in the working directory or above
         Env.TraversePath().Load();
         string? botToken = Environment.GetEnvironmentVariable("TOKEN");
 
         if (string.IsNullOrEmpty(botToken))
         {
-            Console.WriteLine("Error: Token couldn't be read from .env file!");
+            logger.LogCritical("Token couldn't be read from .env file!");
             return;
         }
 
@@ -61,16 +69,17 @@ internal static class Program
         {
             if (!ulong.TryParse(ownerIdText, out ulong parsedOwnerId))
             {
-                Console.WriteLine($"Error: OWNER_ID '{ownerIdText}' is not a Discord user ID!");
+                logger.LogCritical("OWNER_ID '{OwnerId}' is not a Discord user ID", ownerIdText);
                 return;
             }
             ownerId = parsedOwnerId;
         }
-        Console.WriteLine(ownerId is null
-            ? "OWNER_ID not set, owner commands are limited to the Discord application owner."
-            : $"Owner commands are limited to user {ownerId}.");
+        if (ownerId is null)
+            logger.LogInformation("OWNER_ID not set, owner commands are limited to the Discord application owner");
+        else
+            logger.LogInformation("Owner commands are limited to user {OwnerId}", ownerId);
 
-        Console.WriteLine("Starting Bot...");
+        logger.LogInformation("Starting bot");
 
         // Configure the Discord client
         var config = new DiscordSocketConfig
@@ -94,11 +103,14 @@ internal static class Program
         });
 
         var services = new ServiceCollection()
+            .AddSingleton(loggerFactory)
+            .AddLogging()
             .AddSingleton(new BotOptions(botToken, ownerId))
             .AddSingleton(client)
             .AddSingleton(interactions)
             .AddSingleton<CardApiClient>()
             .AddSingleton<SetCardCache>()
+            .AddSingleton<PackSettingsProvider>()
             .AddSingleton<UserRepository>()
             .AddSingleton<BotState>()
             .AddSingleton<SessionStore>()
@@ -113,8 +125,8 @@ internal static class Program
         _ = services.GetRequiredService<SessionCleanup>().RunAsync();
         await services.GetRequiredService<Bot>().StartAsync(botToken);
         // Log the bot's start time and keep the application running until the watchdog exits it
-        Console.WriteLine($"Bot started at: {services.GetRequiredService<BotState>().StartedAtUtc}");
-        await GatewayWatchdog.RunAsync(client);
+        logger.LogInformation("Bot started at {StartedAtUtc:O}", services.GetRequiredService<BotState>().StartedAtUtc);
+        await GatewayWatchdog.RunAsync(client, loggerFactory.CreateLogger(typeof(GatewayWatchdog)));
     }
 
     /// <summary>

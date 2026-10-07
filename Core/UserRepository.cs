@@ -1,4 +1,5 @@
 using DiscordBot.Models;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace DiscordBot.Core;
@@ -22,8 +23,12 @@ public sealed class UserRepository
     /// </summary>
     private static readonly TimeSpan ArchiveRetention = TimeSpan.FromDays(30);
 
-    public UserRepository()
+    private readonly ILogger<UserRepository> _logger;
+
+    public UserRepository(ILogger<UserRepository> logger)
     {
+        _logger = logger;
+
         // Ensure the directories exist
         Directory.CreateDirectory(UserCardsDirectory);
         Directory.CreateDirectory(ArchivedUserCardsDirectory);
@@ -48,7 +53,7 @@ public sealed class UserRepository
         if (!File.Exists(userFilePath) && File.Exists(archivedFilePath))
         {
             File.Move(archivedFilePath, userFilePath);
-            Console.WriteLine($"Restored archived JSON file for user {userId}.");
+            _logger.LogInformation("Restored archived JSON file for user {UserId}", userId);
         }
 
         if (File.Exists(userFilePath))
@@ -122,12 +127,13 @@ public sealed class UserRepository
                         continue;
 
                     File.Delete(file);
-                    Console.WriteLine($"Purged archived JSON file {Path.GetFileName(file)} (left more than {ArchiveRetention.TotalDays} days ago).");
+                    _logger.LogInformation("Purged archived JSON file {FileName} (left more than {RetentionDays} days ago)",
+                        Path.GetFileName(file), ArchiveRetention.TotalDays);
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to purge archived user files: {ex}");
+                _logger.LogError(ex, "Failed to purge archived user files");
             }
 
             await Task.Delay(TimeSpan.FromDays(1));

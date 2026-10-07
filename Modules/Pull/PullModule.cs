@@ -4,6 +4,7 @@ using Discord.WebSocket;
 using DiscordBot.Core;
 using DiscordBot.Models;
 using DiscordBot.Preconditions;
+using Microsoft.Extensions.Logging;
 
 namespace DiscordBot.Modules.Pull;
 
@@ -17,7 +18,9 @@ public sealed class PullModule(
     BotStateStore stateStore,
     SessionStore sessions,
     UserRepository users,
-    SetCardCache setCards) : InteractionModuleBase<SocketInteractionContext>
+    SetCardCache setCards,
+    PackSettingsProvider packSettings,
+    ILogger<PullModule> logger) : InteractionModuleBase<SocketInteractionContext>
 {
     private SocketMessageComponent Component => (SocketMessageComponent)Context.Interaction;
 
@@ -40,7 +43,7 @@ public sealed class PullModule(
         try
         {
             // Pack layout (card count, slot odds, price) and covers come from Data/packSettings.json
-            PackProfile profile = PackSettingsProvider.GetProfile(setId);
+            PackProfile profile = packSettings.GetProfile(setId);
             double packCost = profile.PackPrice;
 
             // Check the balance before loading any cards, so broke users cost no API calls
@@ -59,11 +62,12 @@ public sealed class PullModule(
 
             var uncoveredRarities = PackBuilder.GetUncoveredRarities(profile, allCards);
             if (uncoveredRarities.Count > 0)
-                Console.WriteLine($"Pack settings: set '{setId}' has rarities no slot can roll: {string.Join(", ", uncoveredRarities)}");
+                logger.LogWarning("Pack settings: set '{SetId}' has rarities no slot can roll: {Rarities}",
+                    setId, string.Join(", ", uncoveredRarities));
 
             var selectedCardList = PackBuilder.BuildPack(profile, allCards, random);
 
-            string packImagePath = PackSettingsProvider.GetRandomCoverPath(setId, random);
+            string packImagePath = packSettings.GetRandomCoverPath(setId, random);
 
             if (!File.Exists(packImagePath))
             {
@@ -109,7 +113,7 @@ public sealed class PullModule(
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Pull Error: {ex}");
+            logger.LogError(ex, "Failed to pull a pack of set {SetId} ({Language})", setId, lang);
             await FollowupAsync("⚠️ System error while opening pack.", ephemeral: true);
         }
     }
@@ -248,7 +252,8 @@ public sealed class PullModule(
         collection.Balance += totalEarned;
         await users.SaveUserCardsAsync(collection);
 
-        Console.WriteLine($"[Sell Pack] User {Context.User.Username} sold {cardsSold} cards for a total of {totalEarned:F2}! New Balance: {collection.Balance:F2}");
+        logger.LogInformation("User {Username} sold {CardsSold} pack cards for {TotalEarned:F2}, new balance {Balance:F2}",
+            Context.User.Username, cardsSold, totalEarned, collection.Balance);
 
         var buttons = new ComponentBuilder()
             .WithButton("Pack Sold", "disabled_sell", ButtonStyle.Secondary, disabled: true)

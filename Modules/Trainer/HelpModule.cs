@@ -40,6 +40,5 @@ public sealed class HelpModule : InteractionModuleBase<SocketInteractionContext>
         .WithCurrentTimestamp();
 
         await FollowupAsync(embed: embed.Build(), ephemeral: true);
-        Console.WriteLine("Handled /help command successfully.");
     }
 }
