@@ -58,14 +58,18 @@ public sealed class PullModule(
                 return;
             }
 
+            Func<Card, string>? rarityOf = null;
+            if (!lang.Equals("en", StringComparison.OrdinalIgnoreCase))
+                rarityOf = PackBuilder.EnglishRarityLookup(await setCards.GetSetCardsAsync(setId, "en"));
+
             var random = new Random();
 
-            var uncoveredRarities = PackBuilder.GetUncoveredRarities(profile, allCards);
+            var uncoveredRarities = PackBuilder.GetUncoveredRarities(profile, allCards, rarityOf);
             if (uncoveredRarities.Count > 0)
                 logger.LogWarning("Pack settings: set '{SetId}' has rarities no slot can roll: {Rarities}",
                     setId, string.Join(", ", uncoveredRarities));
 
-            var selectedCardList = PackBuilder.BuildPack(profile, allCards, random);
+            var selectedCardList = PackBuilder.BuildPack(profile, allCards, random, rarityOf);
 
             string packImagePath = packSettings.GetRandomCoverPath(setId, random);
 

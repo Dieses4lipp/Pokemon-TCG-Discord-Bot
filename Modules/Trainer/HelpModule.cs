@@ -32,8 +32,11 @@ public sealed class HelpModule : InteractionModuleBase<SocketInteractionContext>
             "`/canceltrade` - Cancel your current active trade session.")
 
         .AddField("🛡️ Admin Commands",
-            "`/lock [set-id]` | `/unlock` - Control which sets are currently pullable.\n" +
+            "`/lockset [set-id]` | `/unlockset [set-id]` - Control which sets are currently pullable.\n" +
             "`/turnon` | `/turnoff` - Enable or disable bot command responses.\n" +
+            "`/addbalance` | `/setbalance` - Change a user's balance.\n" +
+            "`/givecard` | `/removecard` - Add or remove a card in a user's collection.\n" +
+            "`/userinfo` - Show a user's balance, collection and expedition.\n" +
             "`/restart` - Perform a system reboot.")
 
         .WithFooter(footer => footer.Text = "Pokémon TCG Bot • Use slash commands to interact!")
