@@ -113,7 +113,7 @@ public sealed class InventoryModule(SessionStore sessions, UserRepository users)
         }
 
         // Calculate market value
-        double marketPrice = GetCardMarketValue(cardToSell);
+        decimal marketPrice = GetCardMarketValue(cardToSell);
 
         if (marketPrice <= 0)
         {
@@ -183,27 +183,18 @@ public sealed class InventoryModule(SessionStore sessions, UserRepository users)
     ///     The card to get the market value for.
     /// </param>
     /// <returns>
-    ///     The market value of the card, or 0.0 if no price is available.
+    ///     The market value of the card in whole cents, or 0 if no price is available.
     /// </returns>
-    private static double GetCardMarketValue(Card card)
+    private static decimal GetCardMarketValue(Card card)
     {
-        if (card.Pricing == null)
-            return 0.0;
+        double? price =
+            card.Pricing?.Cardmarket?.Avg ??
+            card.Pricing?.TcgPlayer?.Market ??
+            card.Pricing?.TcgPlayer?.Low;
 
-        // Prefer Cardmarket average price
-        if (card.Pricing.Cardmarket?.Avg.HasValue == true)
-            return card.Pricing.Cardmarket.Avg.Value;
-
-        // Fallback to TCGPlayer market price
-        if (card.Pricing.TcgPlayer?.Market.HasValue == true)
-            return card.Pricing.TcgPlayer.Market.Value;
-
-        // Fallback to TCGPlayer low price
-        if (card.Pricing.TcgPlayer?.Low.HasValue == true)
-            return card.Pricing.TcgPlayer.Low.Value;
-
-        return 0.0;
+        return price is { } value ? Money.FromDouble(value) : 0m;
     }
+
 
     /// <summary>
     ///     Determines whether the specified card matches the favorite card in the given user card collection.

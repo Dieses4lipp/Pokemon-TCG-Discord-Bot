@@ -35,7 +35,8 @@ public class UserCardCollection
     /// <summary>
     ///     Gets or sets the user's current balance Balance earned from selling cards.
     /// </summary>
-    public double Balance { get; set; } = 0.0;
+    public decimal Balance { get; set; }
+
 
     /// <summary>
     ///     Gets or sets the user's favorite card, if any.

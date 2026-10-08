@@ -44,7 +44,7 @@ public sealed class PullModule(
         {
             // Pack layout (card count, slot odds, price) and covers come from Data/packSettings.json
             PackProfile profile = packSettings.GetProfile(setId);
-            double packCost = profile.PackPrice;
+            decimal packCost = Money.FromDouble(profile.PackPrice);
 
             // Check the balance before loading any cards, so broke users cost no API calls
             if (!await HasEnoughBalanceAsync(packCost))
@@ -233,7 +233,7 @@ public sealed class PullModule(
             return;
         await stateStore.SaveAsync();
 
-        double totalEarned = 0;
+        decimal totalEarned = 0;
         int cardsSold = 0;
 
         foreach (var card in session.Cards)
@@ -241,11 +241,11 @@ public sealed class PullModule(
             var identifier = $"{card.Name}_{card.Rarity}";
             if (!session.SavedCardIdentifiers.Contains(identifier))
             {
-                double marketPrice =
+                decimal marketPrice = Money.FromDouble(
                     card.Pricing?.TcgPlayer?.Market ??
                     card.Pricing?.TcgPlayer?.Low ??
                     card.Pricing?.Cardmarket?.Avg ??
-                    0.50;
+                    0.50);
 
                 totalEarned += marketPrice;
                 cardsSold++;
@@ -326,7 +326,7 @@ public sealed class PullModule(
     /// <returns>
     ///     <see langword="true"/> if the user's balance covers the pack.
     /// </returns>
-    private async Task<bool> HasEnoughBalanceAsync(double packCost)
+    private async Task<bool> HasEnoughBalanceAsync(decimal packCost)
     {
         var userCollection = await users.LoadUserCardsAsync(Context.User.Id);
         if (userCollection.Balance >= packCost)
@@ -345,7 +345,8 @@ public sealed class PullModule(
     /// <param name="balance">
     ///     The user's current balance.
     /// </param>
-    private Task SendInsufficientBalanceAsync(double packCost, double balance)
+    private Task SendInsufficientBalanceAsync(decimal packCost, decimal balance)
+
     {
         return FollowupAsync(
             $"❌ **Insufficient balance!**\n\n" +

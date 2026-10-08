@@ -18,9 +18,12 @@ public sealed class TradeModule(SessionStore sessions, BotStateStore stateStore,
         [Summary("user", "The User you want to trade with.")] IUser targetUser,
         [Summary("give-card", "The name of the card you want to give.")] string giveCardName,
         [Summary("receive-card", "The name of the card you want to receive.")] string? receiveCardName = null,
-        [Summary("receive-money", "The amount of money you want to receive.")] double receiveMoney = 0.0)
+        [Summary("receive-money", "The amount of money you want to receive.")] double receiveMoneyOption = 0.0)
     {
         await DeferAsync(ephemeral: false);
+
+        decimal receiveMoney = Money.FromDouble(receiveMoneyOption);
+
 
         if (string.IsNullOrEmpty(receiveCardName) && receiveMoney <= 0)
         {

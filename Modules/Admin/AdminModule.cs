@@ -96,7 +96,7 @@ public sealed class AdminModule(
         await DeferAsync(ephemeral: true);
 
         var collection = await users.LoadUserCardsAsync(user.Id);
-        double newBalance = collection.Balance + amount;
+        decimal newBalance = collection.Balance + Money.FromDouble(amount);
 
         if (newBalance < 0)
         {
@@ -120,7 +120,7 @@ public sealed class AdminModule(
             return;
         }
 
-        await ChangeBalanceAsync(user, await users.LoadUserCardsAsync(user.Id), amount);
+        await ChangeBalanceAsync(user, await users.LoadUserCardsAsync(user.Id), Money.FromDouble(amount));
     }
 
     [SlashCommand("givecard", "Adds a card to a user's collection. (Admin only)")]
@@ -222,9 +222,10 @@ public sealed class AdminModule(
         Program.RestartBot();
     }
 
-    private async Task ChangeBalanceAsync(IUser user, UserCardCollection collection, double newBalance)
+    private async Task ChangeBalanceAsync(IUser user, UserCardCollection collection, decimal newBalance)
     {
-        double oldBalance = collection.Balance;
+        decimal oldBalance = collection.Balance;
+
         collection.Balance = newBalance;
         await users.SaveUserCardsAsync(collection);
 

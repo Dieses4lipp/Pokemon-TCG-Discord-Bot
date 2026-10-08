@@ -162,9 +162,10 @@ public sealed class ExpeditionModule(
         var location = ExpeditionSettingsProvider.GetLocationById(expedition.LocationId);
 
         // Roll coin reward
-        double coinReward = location == null
-            ? 0.0
-            : location.MinReward + _random.NextDouble() * (location.MaxReward - location.MinReward);
+        decimal coinReward = location == null
+            ? 0m
+            : Money.FromDouble(location.MinReward + _random.NextDouble() * (location.MaxReward - location.MinReward));
+
 
         collection.Balance += coinReward;
 

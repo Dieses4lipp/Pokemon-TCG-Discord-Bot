@@ -8,7 +8,8 @@ public class TradeSwapTests
     private static Card MakeCard(string name, string rarity = "Rare", bool locked = false) =>
         new() { Name = name, Rarity = rarity, IsLocked = locked };
 
-    private static UserCardCollection MakeCollection(ulong userId, double balance, params Card[] cards) => new()
+    private static UserCardCollection MakeCollection(ulong userId, decimal balance, params Card[] cards) => new()
+
     {
         UserId = userId,
         Balance = balance,
