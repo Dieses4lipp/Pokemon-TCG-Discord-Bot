@@ -82,14 +82,14 @@ public sealed class InventoryModule(SessionStore sessions, UserRepository users)
         UserCardCollection collection = await users.LoadUserCardsAsync(session.UserId);
         Card favoriteCard = session.Cards[session.CurrentIndex];
 
-        collection.FavoriteCard = favoriteCard;
+        collection.FavoriteCardId = favoriteCard.InstanceId;
         await users.SaveUserCardsAsync(collection);
 
         await UpdateInventoryUIAsync(session, collection);
     }
 
     /// <summary>
-    ///     Sells one copy of the shown card.
+    ///     Sells the shown copy.
     /// </summary>
     [ComponentInteraction("inv_sell_card")]
     public async Task SellCardAsync()
@@ -101,14 +101,19 @@ public sealed class InventoryModule(SessionStore sessions, UserRepository users)
         Card sessionCard = session.Cards[session.CurrentIndex];
         UserCardCollection collection = await users.LoadUserCardsAsync(session.UserId);
 
-        // Sell exactly one unlocked copy from the freshly loaded collection; the session snapshot
-        // may be stale (e.g. a copy went on an expedition after /inventory was opened)
-        Card? cardToSell = collection.Cards.FirstOrDefault(c =>
-            c.Name == sessionCard.Name && c.Rarity == sessionCard.Rarity && !c.IsLocked);
+        // Check the freshly loaded copy; the session snapshot may be stale (e.g. the card went on
+        // an expedition or was traded after /inventory was opened)
+        Card? cardToSell = collection.Cards.FirstOrDefault(c => c.InstanceId == sessionCard.InstanceId);
 
         if (cardToSell == null)
         {
-            await FollowupAsync("🔒 No sellable copy left - this card is locked (on an expedition) or no longer in your inventory.", ephemeral: true);
+            await FollowupAsync("❌ This card is no longer in your inventory.", ephemeral: true);
+            return;
+        }
+
+        if (cardToSell.IsLocked)
+        {
+            await FollowupAsync("🔒 This card is locked (on an expedition) and can't be sold.", ephemeral: true);
             return;
         }
 
@@ -123,13 +128,6 @@ public sealed class InventoryModule(SessionStore sessions, UserRepository users)
 
         if (collection.Cards.Remove(cardToSell))
         {
-            // Clear favorite if the last copy was sold
-            if (IsFavorite(collection, cardToSell) &&
-                !collection.Cards.Any(c => c.Name == cardToSell.Name && c.Rarity == cardToSell.Rarity))
-            {
-                collection.FavoriteCard = null;
-            }
-
             // Add earnings to balance
             collection.Balance += marketPrice;
             await users.SaveUserCardsAsync(collection);
@@ -197,18 +195,10 @@ public sealed class InventoryModule(SessionStore sessions, UserRepository users)
 
 
     /// <summary>
-    ///     Determines whether the specified card matches the favorite card in the given user card collection.
+    ///     Determines whether the specified copy is the user's favorite.
     /// </summary>
-    /// <returns>
-    ///     <see langword="true"/> if the current card has the same name and rarity as the favorite
-    ///     card in the collection; otherwise, false.
-    /// </returns>
-    private static bool IsFavorite(UserCardCollection collection, Card currentCard)
-    {
-        return collection.FavoriteCard != null &&
-               collection.FavoriteCard.Name == currentCard.Name &&
-               collection.FavoriteCard.Rarity == currentCard.Rarity;
-    }
+    private static bool IsFavorite(UserCardCollection collection, Card currentCard) =>
+        collection.FavoriteCardId == currentCard.InstanceId;
 
     /// <summary>
     ///     Shows the session's current card and the matching buttons.

@@ -83,7 +83,6 @@ public sealed class ExpeditionModule(
             LocationId = location.Id,
             StartTimeUtc = startTime,
             EndTimeUtc = endTime,
-            SentCards = selectedCards,
         };
 
         await users.SaveUserCardsAsync(collection);
@@ -115,7 +114,7 @@ public sealed class ExpeditionModule(
         var locationName = location?.Name ?? expedition.LocationId;
         var endUnix = new DateTimeOffset(expedition.EndTimeUtc).ToUnixTimeSeconds();
 
-        var cardList = string.Join("\n", expedition.SentCards.Select(c => $"`{c.Name}` ({c.Rarity})"));
+        var cardList = string.Join("\n", collection.CardsOnExpedition.Select(c => $"`{c.Name}` ({c.Rarity})"));
 
         var remaining = expedition.EndTimeUtc - DateTime.UtcNow;
 
@@ -191,7 +190,8 @@ public sealed class ExpeditionModule(
             rewardText += "\n🃏 " + string.Join(", ", rewardCards.Select(c => $"`{c.Name}` ({c.Rarity})"));
         }
 
-        ExpeditionCards.Unlock(collection.Cards, expedition.SentCards);
+        foreach (var card in collection.CardsOnExpedition.ToList())
+            card.IsLocked = false;
 
         // Reset the expedition so a new one can be started
         collection.ActiveExpedition = null;

@@ -94,18 +94,26 @@ internal static class Program
 
         var client = new DiscordSocketClient(config);
 
-        // Sync run mode keeps handling interactions one at a time, as the client events did
-        // before: user collections are plain JSON files without any locking
+        // Sync run mode handles interactions one at a time: a handler loads a collection, changes
+        // it and saves it whole, so two handlers on the same user would overwrite each other
         var interactions = new InteractionService(client, new InteractionServiceConfig
         {
             DefaultRunMode = RunMode.Sync,
             LogLevel = LogSeverity.Info,
         });
 
+        string databasePath = Environment.GetEnvironmentVariable("DATABASE_PATH") is { Length: > 0 } configuredPath
+            ? configuredPath
+            : BotDatabase.DefaultPath;
+        var database = new BotDatabase(databasePath);
+        int schemaVersion = await database.MigrateAsync();
+        logger.LogInformation("Database {DatabasePath} ready (schema version was {SchemaVersion})", databasePath, schemaVersion);
+
         var services = new ServiceCollection()
             .AddSingleton(loggerFactory)
             .AddLogging()
             .AddSingleton(new BotOptions(botToken, ownerId))
+            .AddSingleton(database)
             .AddSingleton(client)
             .AddSingleton(interactions)
             .AddSingleton<CardApiClient>()
@@ -120,7 +128,7 @@ internal static class Program
             .BuildServiceProvider();
 
         // Restore bot on/off, locked sets, pull count, trades and paid packs from before the restart
-        services.GetRequiredService<BotStateStore>().Load();
+        await services.GetRequiredService<BotStateStore>().LoadAsync();
         _ = services.GetRequiredService<UserRepository>().RunArchivePurgeLoopAsync();
         _ = services.GetRequiredService<SessionCleanup>().RunAsync();
         await services.GetRequiredService<Bot>().StartAsync(botToken);

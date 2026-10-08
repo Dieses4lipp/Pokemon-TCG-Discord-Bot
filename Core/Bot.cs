@@ -166,18 +166,16 @@ public sealed class Bot(
     /// <returns>
     ///     A task that represents the asynchronous operation.
     /// </returns>
-    private Task HandleUserLeft(SocketGuild _, SocketUser user)
+    private async Task HandleUserLeft(SocketGuild _, SocketUser user)
     {
-        if (users.ArchiveUserCards(user.Id))
+        if (await users.ArchiveUserCardsAsync(user.Id))
         {
-            logger.LogInformation("Archived JSON file for user {Username} ({UserId})", user.Username, user.Id);
+            logger.LogInformation("Archived collection of user {Username} ({UserId})", user.Username, user.Id);
         }
         else
         {
-            logger.LogInformation("No JSON file found for user {Username} ({UserId})", user.Username, user.Id);
+            logger.LogInformation("No collection found for user {Username} ({UserId})", user.Username, user.Id);
         }
-
-        return Task.CompletedTask;
     }
 
     /// <summary>

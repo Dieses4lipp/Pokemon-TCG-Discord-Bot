@@ -3,7 +3,7 @@ using DiscordBot.Models;
 namespace DiscordBot.Core;
 
 /// <summary>
-///     Picks the cards sent on an expedition and unlocks them again when it is claimed.
+///     Picks the cards sent on an expedition.
 /// </summary>
 public static class ExpeditionCards
 {
@@ -53,37 +53,6 @@ public static class ExpeditionCards
         }
 
         return true;
-    }
-
-    /// <summary>
-    ///     Unlocks one locked copy per sent card, matched by name and rarity. Sent cards that are no
-    ///     longer in the collection are skipped.
-    /// </summary>
-    /// <param name="cards">
-    ///     The cards of the collection.
-    /// </param>
-    /// <param name="sentCards">
-    ///     The cards that were sent on the expedition.
-    /// </param>
-    /// <returns>
-    ///     The number of cards unlocked.
-    /// </returns>
-    public static int Unlock(List<Card> cards, IEnumerable<Card> sentCards)
-    {
-        var unlockedIndices = new HashSet<int>();
-
-        foreach (var sentCard in sentCards)
-        {
-            int matchIndex = FindNext(cards, unlockedIndices, c =>
-                c.IsLocked && c.Name == sentCard.Name && c.Rarity == sentCard.Rarity);
-
-            if (matchIndex == -1) continue;
-
-            cards[matchIndex].IsLocked = false;
-            unlockedIndices.Add(matchIndex);
-        }
-
-        return unlockedIndices.Count;
     }
 
     private static int FindNext(List<Card> cards, HashSet<int> usedIndices, Predicate<Card> match)

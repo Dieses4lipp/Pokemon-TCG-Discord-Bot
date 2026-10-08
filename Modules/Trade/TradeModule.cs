@@ -46,7 +46,7 @@ public sealed class TradeModule(SessionStore sessions, BotStateStore stateStore,
 
         // Validating Card Ownership (Sender)
         var senderCollection = await users.LoadUserCardsAsync(Context.User.Id);
-        var cardToGive = senderCollection.Cards.FirstOrDefault(c => c.Name.Equals(giveCardName, StringComparison.OrdinalIgnoreCase));
+        var cardToGive = FindTradableCopy(senderCollection, giveCardName);
 
         if (cardToGive == null)
         {
@@ -66,7 +66,7 @@ public sealed class TradeModule(SessionStore sessions, BotStateStore stateStore,
         if (!string.IsNullOrEmpty(receiveCardName))
         {
             // Validate Card Ownership (Receiver)
-            cardToReceive = receiverCollection.Cards.FirstOrDefault(c => c.Name.Equals(receiveCardName, StringComparison.OrdinalIgnoreCase));
+            cardToReceive = FindTradableCopy(receiverCollection, receiveCardName);
 
             if (cardToReceive == null)
             {
@@ -145,8 +145,8 @@ public sealed class TradeModule(SessionStore sessions, BotStateStore stateStore,
         if (result.CardFromReceiver != null) senderReceivedText += $"`{result.CardFromReceiver.Name}`\n";
         if (session.MoneyToReceive > 0) senderReceivedText += $"💰 {session.MoneyToReceive:F2}\n";
 
-        await users.SaveUserCardsAsync(senderCol);
-        await users.SaveUserCardsAsync(receiverCol);
+        // One transaction: a crash between two writes can no longer duplicate or lose a card
+        await users.SaveUserCardsAsync(senderCol, receiverCol);
 
         var embed = new EmbedBuilder()
             .WithTitle("✅ Trade Successful!")
@@ -188,6 +188,16 @@ public sealed class TradeModule(SessionStore sessions, BotStateStore stateStore,
 
         await FollowupAsync(embed: embed);
     }
+
+    /// <summary>
+    ///     Finds a copy of the named card, preferring one that is not on an expedition. The trade
+    ///     is bound to that exact copy.
+    /// </summary>
+    private static Card? FindTradableCopy(UserCardCollection collection, string cardName) =>
+        collection.Cards
+            .Where(c => c.Name.Equals(cardName, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(c => c.IsLocked)
+            .FirstOrDefault();
 
     private static string DescribeFailure(TradeFailure failure, TradeSession session) => failure switch
     {

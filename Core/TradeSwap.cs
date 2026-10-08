@@ -8,8 +8,10 @@ namespace DiscordBot.Core;
 public static class TradeSwap
 {
     /// <summary>
-    ///     Checks that both sides can still fulfil the trade and, if so, moves the cards and money
-    ///     and updates the trade stats and favorites. Nothing is changed if a check fails.
+    ///     Checks that both sides still own the exact copies offered and can fulfil the trade and,
+    ///     if so, moves the cards and money and updates the trade stats. Nothing is changed if a
+    ///     check fails. A favorite that changes hands stops being the favorite on its own, see
+    ///     <see cref="UserCardCollection.FavoriteCard"/>.
     /// </summary>
     /// <param name="session">
     ///     The trade that was confirmed.
@@ -49,10 +51,6 @@ public static class TradeSwap
             sender.Cards.Add(cardFromReceiver);
         }
 
-        ClearFavoriteIfGone(sender, cardFromSender);
-        if (cardFromReceiver != null)
-            ClearFavoriteIfGone(receiver, cardFromReceiver);
-
         if (session.MoneyToReceive > 0)
         {
             receiver.Balance -= session.MoneyToReceive;
@@ -66,19 +64,5 @@ public static class TradeSwap
     }
 
     private static Card? FindCard(UserCardCollection collection, Card card) =>
-        collection.Cards.FirstOrDefault(c => c.Name == card.Name && c.Rarity == card.Rarity);
-
-    /// <summary>
-    ///     Clears the favorite card if the collection has no copy of it left.
-    /// </summary>
-    private static void ClearFavoriteIfGone(UserCardCollection collection, Card tradedCard)
-    {
-        if (collection.FavoriteCard != null &&
-            collection.FavoriteCard.Name == tradedCard.Name &&
-            collection.FavoriteCard.Rarity == tradedCard.Rarity &&
-            !collection.Cards.Any(c => c.Name == tradedCard.Name && c.Rarity == tradedCard.Rarity))
-        {
-            collection.FavoriteCard = null;
-        }
-    }
+        collection.Cards.FirstOrDefault(c => c.InstanceId == card.InstanceId);
 }

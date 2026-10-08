@@ -26,10 +26,11 @@ public class PackSession(ulong messageId, ulong userId, List<Card> cards)
     public int CurrentIndex { get; set; }
 
     /// <summary>
-    ///     A set of identifiers (for example, a combination of card name and rarity) representing
-    ///     cards in this pack that have already been saved.
+    ///     Gets or sets the positions in <see cref="Cards"/> of the cards already saved, so two
+    ///     identical cards in one pack can both be saved.
     /// </summary>
-    public HashSet<string> SavedCardIdentifiers { get; set; } = [];
+    public HashSet<int> SavedCardIndices { get; set; } = [];
+
 
     /// <summary>
     ///     Gets or sets when the session was created, used to drop stale sessions on restore.

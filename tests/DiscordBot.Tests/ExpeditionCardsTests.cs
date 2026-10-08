@@ -46,46 +46,4 @@ public class ExpeditionCardsTests
         cards[1].IsLocked = true;
         Assert.False(ExpeditionCards.TrySelect(cards, ["Pikachu"], out _, out _));
     }
-
-    [Fact]
-    public void Unlock_UnlocksOneLockedCopyPerSentCard()
-    {
-        List<Card> cards =
-        [
-            MakeCard("Pikachu", locked: true),
-            MakeCard("Pikachu", locked: true),
-            MakeCard("Pikachu", locked: true),
-            MakeCard("Pikachu"),
-        ];
-
-        int unlocked = ExpeditionCards.Unlock(cards, [MakeCard("Pikachu"), MakeCard("Pikachu")]);
-
-        Assert.Equal(2, unlocked);
-        Assert.Equal(1, cards.Count(c => c.IsLocked));
-    }
-
-    [Fact]
-    public void Unlock_MatchesNameAndRarityAndSkipsCardsNoLongerOwned()
-    {
-        List<Card> cards = [MakeCard("Pikachu", "Common", locked: true), MakeCard("Eevee", locked: true)];
-
-        int unlocked = ExpeditionCards.Unlock(cards, [MakeCard("Pikachu", "Holo Rare"), MakeCard("Eevee"), MakeCard("Mew")]);
-
-        Assert.Equal(1, unlocked);
-        Assert.True(cards[0].IsLocked);
-        Assert.False(cards[1].IsLocked);
-    }
-
-    [Fact]
-    public void SelectThenUnlock_RestoresTheCollection()
-    {
-        List<Card> cards = [MakeCard("Pikachu"), MakeCard("Eevee"), MakeCard("Eevee")];
-        ExpeditionCards.TrySelect(cards, ["Eevee", "Pikachu"], out var selected, out _);
-        foreach (var card in selected) card.IsLocked = true;
-
-        var sentCopies = selected.Select(c => c with { }).ToList();
-        ExpeditionCards.Unlock(cards, sentCopies);
-
-        Assert.All(cards, c => Assert.False(c.IsLocked));
-    }
 }
