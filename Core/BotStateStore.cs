@@ -1,5 +1,5 @@
-﻿using DiscordBot.Commands.SlashCommandHandlers.TrainerCommands.PullCommand;
-using DiscordBot.Models;
+﻿using DiscordBot.Models;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
 namespace DiscordBot.Core;
@@ -8,54 +8,34 @@ namespace DiscordBot.Core;
 ///     Persists the runtime state (bot on/off, locked sets, pull count, pending trades and paid
 ///     pack sessions) to a JSON file on the data volume, so a restart or redeploy does not lose it.
 /// </summary>
-public static class BotStateStore
+public sealed class BotStateStore(BotState botState, SessionStore sessions, ILogger<BotStateStore> logger)
 {
-    /// <summary>
-    ///     Pack sessions older than this are not restored; their ephemeral messages are gone by then.
-    /// </summary>
-    private static readonly TimeSpan PackSessionMaxAge = TimeSpan.FromHours(24);
-
-    private static readonly string StateDirectory = Path.Combine(CardStorage.UserCardsDirectory, "State");
+    private static readonly string StateDirectory = Path.Combine(UserRepository.UserCardsDirectory, "State");
     private static readonly string StateFilePath = Path.Combine(StateDirectory, "botState.json");
 
-    private static readonly SemaphoreSlim WriteLock = new(1, 1);
+    private readonly SemaphoreSlim _writeLock = new(1, 1);
 
     /// <summary>
     ///     Restores the runtime state from disk. Does nothing if no state was saved yet.
     /// </summary>
-    public static void Load()
+    public void Load()
     {
         if (!File.Exists(StateFilePath))
         {
-            Console.WriteLine("No saved bot state found, starting with defaults.");
+            logger.LogInformation("No saved bot state found, starting with defaults");
             return;
         }
 
         var state = JsonConvert.DeserializeObject<PersistedBotState>(File.ReadAllText(StateFilePath))
             ?? new PersistedBotState();
 
-        CommandHandler.BotActive = state.BotActive;
-        CommandHandler.PullCount = state.PullCount;
+        botState.Restore(state.BotActive, state.PullCount, state.LockedSets);
+        sessions.Restore(state.PackSessions, state.ActiveTrades);
+        sessions.RemoveExpired(DateTime.UtcNow);
 
-        CommandHandler.LockedSets.Clear();
-        CommandHandler.LockedSets.UnionWith(state.LockedSets);
-
-        CommandHandler.ActiveTrades.Clear();
-        foreach (var trade in state.ActiveTrades)
-        {
-            CommandHandler.ActiveTrades[trade.SenderId] = trade;
-            CommandHandler.ActiveTrades[trade.ReceiverId] = trade;
-        }
-
-        PullReactionHandler.ActiveSessions.Clear();
-        foreach (var session in state.PackSessions.Where(IsRecent))
-        {
-            PullReactionHandler.ActiveSessions[session.MessageId] = session;
-        }
-
-        Console.WriteLine(
-            $"Restored bot state: active={state.BotActive}, {state.LockedSets.Count} locked sets, " +
-            $"{state.ActiveTrades.Count} trades, {PullReactionHandler.ActiveSessions.Count} pack sessions.");
+        logger.LogInformation(
+            "Restored bot state: active={BotActive}, {LockedSetCount} locked sets, {TradeCount} trades, {PackSessionCount} pack sessions",
+            state.BotActive, state.LockedSets.Count, sessions.Trades.Count, sessions.Packs.Count);
     }
 
     /// <summary>
@@ -65,19 +45,18 @@ public static class BotStateStore
     /// <returns>
     ///     A task that represents the asynchronous operation.
     /// </returns>
-    public static async Task SaveAsync()
+    public async Task SaveAsync()
     {
-        await WriteLock.WaitAsync();
+        await _writeLock.WaitAsync();
         try
         {
             var state = new PersistedBotState
             {
-                BotActive = CommandHandler.BotActive,
-                PullCount = CommandHandler.PullCount,
-                LockedSets = [.. CommandHandler.LockedSets],
-                // Each trade is stored under both user IDs, keep it once
-                ActiveTrades = CommandHandler.ActiveTrades.Values.ToArray().Distinct().ToList(),
-                PackSessions = PullReactionHandler.ActiveSessions.Values.ToArray().Where(IsRecent).ToList(),
+                BotActive = botState.IsActive,
+                PullCount = botState.PullCount,
+                LockedSets = [.. botState.LockedSets],
+                ActiveTrades = [.. sessions.Trades],
+                PackSessions = [.. sessions.Packs.Values],
             };
 
             Directory.CreateDirectory(StateDirectory);
@@ -87,14 +66,11 @@ public static class BotStateStore
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to save bot state: {ex}");
+            logger.LogError(ex, "Failed to save bot state");
         }
         finally
         {
-            WriteLock.Release();
+            _writeLock.Release();
         }
     }
-
-    private static bool IsRecent(PackSession session) =>
-        DateTime.UtcNow - session.CreatedAtUtc <= PackSessionMaxAge;
 }

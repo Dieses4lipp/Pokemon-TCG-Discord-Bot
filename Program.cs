@@ -1,10 +1,11 @@
 ﻿using System.Diagnostics;
 using Discord;
-using Discord.Commands;
+using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordBot.Core;
 using DotNetEnv;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace DiscordBot;
 
@@ -15,9 +16,6 @@ namespace DiscordBot;
 internal static class Program
 {
     private static Process _currentProcess = default!;
-    public static CommandService Commands { get; set; } = default!;
-    public static IServiceProvider Services { get; private set; } = default!;
-    public static DateTime StartTime { get; private set; }
 
     /// <summary>
     ///     Restarts the bot by starting a new process and killing the current one.
@@ -48,17 +46,40 @@ internal static class Program
     /// </returns>
     public static async Task RunBotAsync()
     {
-        // Load environment variables from .env file
-        Env.Load();
+        using var loggerFactory = LoggerFactory.Create(logging => logging.AddSimpleConsole(options =>
+        {
+            options.SingleLine = true;
+            options.TimestampFormat = "yyyy-MM-dd HH:mm:ss ";
+        }));
+        var logger = loggerFactory.CreateLogger(typeof(Program));
+
+        // Load environment variables from the nearest .env file in the working directory or above
+        Env.TraversePath().Load();
         string? botToken = Environment.GetEnvironmentVariable("TOKEN");
 
         if (string.IsNullOrEmpty(botToken))
         {
-            Console.WriteLine("Error: Token couldn't be read from .env file!");
+            logger.LogCritical("Token couldn't be read from .env file!");
             return;
         }
 
-        Console.WriteLine("Starting Bot...");
+        string? ownerIdText = Environment.GetEnvironmentVariable("OWNER_ID");
+        ulong? ownerId = null;
+        if (!string.IsNullOrWhiteSpace(ownerIdText))
+        {
+            if (!ulong.TryParse(ownerIdText, out ulong parsedOwnerId))
+            {
+                logger.LogCritical("OWNER_ID '{OwnerId}' is not a Discord user ID", ownerIdText);
+                return;
+            }
+            ownerId = parsedOwnerId;
+        }
+        if (ownerId is null)
+            logger.LogInformation("OWNER_ID not set, owner commands are limited to the Discord application owner");
+        else
+            logger.LogInformation("Owner commands are limited to user {OwnerId}", ownerId);
+
+        logger.LogInformation("Starting bot");
 
         // Configure the Discord client
         var config = new DiscordSocketConfig
@@ -66,36 +87,46 @@ internal static class Program
             // GuildMembers is privileged: it must also be enabled in the Discord Developer Portal,
             // otherwise the login fails. It is needed for the UserLeft event.
             GatewayIntents = GatewayIntents.Guilds |
-                             GatewayIntents.GuildMembers |
-                             GatewayIntents.GuildMessages |
-                             GatewayIntents.MessageContent |
-                             GatewayIntents.GuildMessageReactions,
+                             GatewayIntents.GuildMembers,
             HandlerTimeout = null,
             ConnectionTimeout = 30000,
         };
 
         var client = new DiscordSocketClient(config);
-        Commands = new CommandService(new CommandServiceConfig
+
+        // Sync run mode keeps handling interactions one at a time, as the client events did
+        // before: user collections are plain JSON files without any locking
+        var interactions = new InteractionService(client, new InteractionServiceConfig
         {
-            DefaultRunMode = RunMode.Async,
-            LogLevel = LogSeverity.Verbose
+            DefaultRunMode = RunMode.Sync,
+            LogLevel = LogSeverity.Info,
         });
 
-        // Create the DI container and register services
-        Services = new ServiceCollection()
+        var services = new ServiceCollection()
+            .AddSingleton(loggerFactory)
+            .AddLogging()
+            .AddSingleton(new BotOptions(botToken, ownerId))
             .AddSingleton(client)
-            .AddSingleton(Commands)
+            .AddSingleton(interactions)
+            .AddSingleton<CardApiClient>()
+            .AddSingleton<SetCardCache>()
+            .AddSingleton<PackSettingsProvider>()
+            .AddSingleton<UserRepository>()
+            .AddSingleton<BotState>()
+            .AddSingleton<SessionStore>()
+            .AddSingleton<BotStateStore>()
+            .AddSingleton<SessionCleanup>()
+            .AddSingleton<Bot>()
             .BuildServiceProvider();
 
-        var bot = new Bot(client);
         // Restore bot on/off, locked sets, pull count, trades and paid packs from before the restart
-        BotStateStore.Load();
-        _ = CardStorage.RunArchivePurgeLoopAsync();
-        await bot.StartAsync(botToken);
+        services.GetRequiredService<BotStateStore>().Load();
+        _ = services.GetRequiredService<UserRepository>().RunArchivePurgeLoopAsync();
+        _ = services.GetRequiredService<SessionCleanup>().RunAsync();
+        await services.GetRequiredService<Bot>().StartAsync(botToken);
         // Log the bot's start time and keep the application running until the watchdog exits it
-        StartTime = DateTime.UtcNow;
-        Console.WriteLine($"Bot started at: {StartTime}");
-        await GatewayWatchdog.RunAsync(client);
+        logger.LogInformation("Bot started at {StartedAtUtc:O}", services.GetRequiredService<BotState>().StartedAtUtc);
+        await GatewayWatchdog.RunAsync(client, loggerFactory.CreateLogger(typeof(GatewayWatchdog)));
     }
 
     /// <summary>

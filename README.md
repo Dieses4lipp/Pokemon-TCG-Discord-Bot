@@ -73,6 +73,9 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
 
    ```env
    TOKEN=your_new_discord_bot_token_here
+   # Optional: Discord user ID allowed to run /lockset, /unlockset, /turnon, /turnoff and /restart.
+   # Defaults to the owner of the Discord application.
+   OWNER_ID=your_discord_user_id
    ```
 
 3. **Restore Dependencies and Build:**
@@ -96,10 +99,16 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
   The bot listens strictly to Discord Application (Slash) Commands executing directly through integrations instead of the old-school text message prefix parsing mechanism.
 
 - **API Endpoints:**  
-  The bot uses endpoints from the Pokémon TCG API to fetch card and set data. Update these in the `CommandHandler` class if necessary.
+  The bot uses endpoints from the Pokémon TCG API to fetch card and set data. Update these in the `CardApiClient` class if necessary.
 
 - **Logging:**  
-  Logging is routed to the console to help you monitor bot activity and debug errors.
+  Logging goes through `Microsoft.Extensions.Logging` to the console (one line per entry, with timestamp), including full exceptions with stack traces.
+
+- **Pack settings:**  
+  Profiles (cards per pack, slots, rarity odds, price) are edited by hand in `Data/packSettings.json`. The `sets` section is generated from the folders in `Assets/sets_covers`: after adding a cover folder, run `python tools/gen_pack_settings.py`. To check the rarity names in the profiles against TCGdex, run `python tools/check_pack_rarities.py`; it lists every rarity a set has that no slot can roll.
+
+- **Tests:**  
+  `dotnet test` runs the tests in `tests/DiscordBot.Tests` (pack building, pack settings validation, and a check that the shipped `Data/packSettings.json` is valid). CI runs them before building the image.
 
 - **Security Note:**  
   **Never share your bot token publicly!** Always store it securely in your environment variables or configuration files (e.g., the `.env` file). If your token is ever exposed, reset it immediately through the [Discord Developer Portal](https://discord.com/developers/applications).
