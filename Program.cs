@@ -109,6 +109,10 @@ internal static class Program
         int schemaVersion = await database.MigrateAsync();
         logger.LogInformation("Database {DatabasePath} ready (schema version was {SchemaVersion})", databasePath, schemaVersion);
 
+        // One-shot move of the JSON files kept before the database; does nothing once done
+        await new LegacyJsonImporter(database, loggerFactory.CreateLogger<LegacyJsonImporter>())
+            .ImportAsync(LegacyJsonImporter.DefaultDirectory);
+
         var services = new ServiceCollection()
             .AddSingleton(loggerFactory)
             .AddLogging()
