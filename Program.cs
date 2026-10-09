@@ -130,6 +130,7 @@ internal static class Program
             .AddSingleton<SessionStore>()
             .AddSingleton<BotStateStore>()
             .AddSingleton<SessionCleanup>()
+            .AddSingleton<DatabaseBackup>()
             .AddSingleton<Bot>()
             .BuildServiceProvider();
 
@@ -138,6 +139,7 @@ internal static class Program
         await services.GetRequiredService<ExpeditionLocationStore>().LoadAsync();
         _ = services.GetRequiredService<UserRepository>().RunArchivePurgeLoopAsync();
         _ = services.GetRequiredService<SessionCleanup>().RunAsync();
+        _ = services.GetRequiredService<DatabaseBackup>().RunAsync();
         await services.GetRequiredService<Bot>().StartAsync(botToken);
         // Log the bot's start time and keep the application running until the watchdog exits it
         logger.LogInformation("Bot started at {StartedAtUtc:O}", services.GetRequiredService<BotState>().StartedAtUtc);
