@@ -1,0 +1,8 @@
+[Unit]
+Description=Copy the newest Pokemon TCG bot database backup to the NAS
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/pokebot-backup.sh

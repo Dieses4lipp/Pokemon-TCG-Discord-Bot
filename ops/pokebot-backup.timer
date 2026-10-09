@@ -1,0 +1,10 @@
+[Unit]
+Description=Copy the Pokemon TCG bot database backup to the NAS once a day
+
+[Timer]
+OnCalendar=*-*-* 05:00:00
+RandomizedDelaySec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
