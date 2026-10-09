@@ -62,6 +62,18 @@ public sealed class BotDatabase
             set_id TEXT PRIMARY KEY
         );
         """,
+        """
+        CREATE TABLE expedition_locations (
+            id                 TEXT PRIMARY KEY COLLATE NOCASE,
+            name               TEXT NOT NULL,
+            duration_minutes   INTEGER NOT NULL,
+            min_reward         REAL NOT NULL,
+            max_reward         REAL NOT NULL,
+            card_reward_chance REAL NOT NULL,
+            card_reward_count  INTEGER NOT NULL,
+            card_reward_set_id TEXT
+        );
+        """,
     ];
 
     private readonly string _connectionString;

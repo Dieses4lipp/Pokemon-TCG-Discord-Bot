@@ -123,6 +123,8 @@ internal static class Program
             .AddSingleton<CardApiClient>()
             .AddSingleton<SetCardCache>()
             .AddSingleton<PackSettingsProvider>()
+            .AddSingleton(provider => new ExpeditionLocationStore(database, ExpeditionLocationStore.DefaultSeedFilePath,
+                provider.GetRequiredService<ILogger<ExpeditionLocationStore>>()))
             .AddSingleton<UserRepository>()
             .AddSingleton<BotState>()
             .AddSingleton<SessionStore>()
@@ -133,6 +135,7 @@ internal static class Program
 
         // Restore bot on/off, locked sets, pull count, trades and paid packs from before the restart
         await services.GetRequiredService<BotStateStore>().LoadAsync();
+        await services.GetRequiredService<ExpeditionLocationStore>().LoadAsync();
         _ = services.GetRequiredService<UserRepository>().RunArchivePurgeLoopAsync();
         _ = services.GetRequiredService<SessionCleanup>().RunAsync();
         await services.GetRequiredService<Bot>().StartAsync(botToken);

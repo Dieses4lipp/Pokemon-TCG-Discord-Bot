@@ -16,6 +16,7 @@ namespace DiscordBot.Modules.Expedition;
 public sealed class ExpeditionModule(
     BotState botState,
     UserRepository users,
+    ExpeditionLocationStore locations,
     CardApiClient api,
     ILogger<ExpeditionModule> logger)
     : InteractionModuleBase<SocketInteractionContext>
@@ -36,7 +37,7 @@ public sealed class ExpeditionModule(
 
         var location = string.IsNullOrWhiteSpace(locationId)
             ? null
-            : ExpeditionSettingsProvider.GetLocationById(locationId);
+            : locations.GetLocationById(locationId);
 
         if (location == null)
         {
@@ -110,7 +111,7 @@ public sealed class ExpeditionModule(
             return;
         }
 
-        var location = ExpeditionSettingsProvider.GetLocationById(expedition.LocationId);
+        var location = locations.GetLocationById(expedition.LocationId);
         var locationName = location?.Name ?? expedition.LocationId;
         var endUnix = new DateTimeOffset(expedition.EndTimeUtc).ToUnixTimeSeconds();
 
@@ -158,7 +159,7 @@ public sealed class ExpeditionModule(
             return;
         }
 
-        var location = ExpeditionSettingsProvider.GetLocationById(expedition.LocationId);
+        var location = locations.GetLocationById(expedition.LocationId);
 
         // Roll coin reward
         decimal coinReward = location == null

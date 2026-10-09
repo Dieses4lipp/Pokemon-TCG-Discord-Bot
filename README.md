@@ -195,6 +195,12 @@ Once the bot is running and added to your Discord server, interact with it using
 - **`/userinfo [user]`**  
   Shows a user's balance, collection size, stats, favorite card and running expedition. *(Admin only)*
 
+- **`/expedition-admin list` / `edit [location] ...` / `reload`**  
+  Lists the expedition locations, changes one (only the options you pass: name, duration, reward range, card reward chance, count and set, `random` for a random set) or resets all of them to `Data/expeditionSettings.json`. Locations live in the database: the file only fills it on the first start and is what `reload` resets to, so edits survive restarts and deploys. *(Admin only)*
+
+- **`/expedition-admin inspect [user]` / `finish [user]`**  
+  Shows a user's running expedition, or ends it now so the user can claim it right away. *(Admin only)*
+
 - **`/stats`**  
   Displays various statistics about the bot’s usage and performance. *(Admin only)*
 

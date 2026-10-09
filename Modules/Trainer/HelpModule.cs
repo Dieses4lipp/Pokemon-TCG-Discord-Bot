@@ -37,6 +37,7 @@ public sealed class HelpModule : InteractionModuleBase<SocketInteractionContext>
             "`/addbalance` | `/setbalance` - Change a user's balance.\n" +
             "`/givecard` | `/removecard` - Add or remove a card in a user's collection.\n" +
             "`/userinfo` - Show a user's balance, collection and expedition.\n" +
+            "`/expedition-admin` - List, edit or reload expedition locations; inspect or finish a user's expedition.\n" +
             "`/restart` - Perform a system reboot.")
 
         .WithFooter(footer => footer.Text = "Pokémon TCG Bot • Use slash commands to interact!")

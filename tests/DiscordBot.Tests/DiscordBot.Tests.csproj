@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <None Include="..\..\Data\packSettings.json" Link="Data\packSettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\Data\expeditionSettings.json" Link="Data\expeditionSettings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
