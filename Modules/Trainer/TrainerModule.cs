@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Discord;
 using Discord.Interactions;
 using DiscordBot.Core;
+using DiscordBot.Models;
 using DiscordBot.Preconditions;
 using Microsoft.Extensions.Logging;
 
@@ -84,52 +85,47 @@ public sealed class TrainerModule(
     public async Task SetsAsync()
     {
         await DeferAsync(ephemeral: true);
+        await ModifyOriginalResponseAsync(m => m.Content = "⏳ Fetching latest Pokémon sets...");
 
+        List<Set> setsList;
         try
         {
-            var loadingMessage = await FollowupAsync("⏳ Fetching latest Pokémon sets...");
-
-            var setsList = await api.GetFirstSetsAsync(25);
-
-            if (setsList.Count == 0)
-            {
-                await loadingMessage.ModifyAsync(m => m.Content = "❌ No sets found!");
-                return;
-            }
-
-            var sortedSets = setsList
-                .OrderBy(s => s.Name)
-                .Take(24)
-                .ToList();
-
-            var embedBuilder = new EmbedBuilder()
-                .WithTitle("📂 Pokémon TCG Sets")
-                .WithDescription("Use these IDs with the `/pull` command!")
-                .WithColor(Color.Green)
-                .WithFooter("Showing the 25 most recent sets.")
-                .WithCurrentTimestamp();
-
-            foreach (var set in sortedSets)
-            {
-                embedBuilder.AddField(set.Name, $"`{set.Id}` \n", inline: true);
-            }
-
-            await loadingMessage.ModifyAsync(msg =>
-            {
-                msg.Content = "";
-                msg.Embed = embedBuilder.Build();
-                msg.Components = null;
-            });
-        }
-        catch (ArgumentException ex)
-        {
-            logger.LogError(ex, "Error building /sets response embed");
-            await FollowupAsync("⚠️ An error occured while building the response message.");
+            setsList = await api.GetFirstSetsAsync(25);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to fetch sets for /sets");
-            await FollowupAsync("⚠️ An error occurred while contacting the TCG API.");
+            await ModifyOriginalResponseAsync(m => m.Content = "⚠️ An error occurred while contacting the TCG API.");
+            return;
         }
+
+        if (setsList.Count == 0)
+        {
+            await ModifyOriginalResponseAsync(m => m.Content = "❌ No sets found!");
+            return;
+        }
+
+        var sortedSets = setsList
+            .OrderBy(s => s.Name)
+            .Take(24)
+            .ToList();
+
+        var embedBuilder = new EmbedBuilder()
+            .WithTitle("📂 Pokémon TCG Sets")
+            .WithDescription("Use these IDs with the `/pull` command!")
+            .WithColor(Color.Green)
+            .WithFooter("Showing the 25 most recent sets.")
+            .WithCurrentTimestamp();
+
+        foreach (var set in sortedSets)
+        {
+            embedBuilder.AddField(set.Name, $"`{set.Id}` \n", inline: true);
+        }
+
+        await ModifyOriginalResponseAsync(msg =>
+        {
+            msg.Content = "";
+            msg.Embed = embedBuilder.Build();
+        });
     }
 }
