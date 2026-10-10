@@ -7,7 +7,15 @@ namespace DiscordBot.Models;
 /// </summary>
 public record Card
 {
+    /// <summary>
+    ///     Gets or sets the ID of this copy in the database; 0 until the card is saved to a
+    ///     collection. Two copies of the same card have different IDs.
+    /// </summary>
+    [JsonProperty("instanceId")]
+    public long InstanceId { get; set; }
+
     private string _setId = default!;
+
     [JsonProperty("id")]
     public string SetId
     {

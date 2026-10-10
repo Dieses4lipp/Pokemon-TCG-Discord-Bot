@@ -53,9 +53,8 @@ public class ExpeditionLocation
     public int CardRewardCount { get; set; } = 1;
 
     /// <summary>
-    ///     Gets or sets the set id to draw the reward card(s) from via
-    ///     <c>CommandHandler.GetRandomCards</c>. Empty/null means no restriction is applied by
-    ///     this location (a set id still must be supplied at claim time).
+    ///     Gets or sets the set id to draw the reward card(s) from. Empty/null means a random
+    ///     set that is not locked.
     /// </summary>
     public string? CardRewardSetId { get; set; }
 }

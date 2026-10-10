@@ -16,6 +16,7 @@ namespace DiscordBot.Modules.Expedition;
 public sealed class ExpeditionModule(
     BotState botState,
     UserRepository users,
+    ExpeditionLocationStore locations,
     CardApiClient api,
     ILogger<ExpeditionModule> logger)
     : InteractionModuleBase<SocketInteractionContext>
@@ -36,7 +37,7 @@ public sealed class ExpeditionModule(
 
         var location = string.IsNullOrWhiteSpace(locationId)
             ? null
-            : ExpeditionSettingsProvider.GetLocationById(locationId);
+            : locations.GetLocationById(locationId);
 
         if (location == null)
         {
@@ -83,7 +84,6 @@ public sealed class ExpeditionModule(
             LocationId = location.Id,
             StartTimeUtc = startTime,
             EndTimeUtc = endTime,
-            SentCards = selectedCards,
         };
 
         await users.SaveUserCardsAsync(collection);
@@ -111,11 +111,11 @@ public sealed class ExpeditionModule(
             return;
         }
 
-        var location = ExpeditionSettingsProvider.GetLocationById(expedition.LocationId);
+        var location = locations.GetLocationById(expedition.LocationId);
         var locationName = location?.Name ?? expedition.LocationId;
         var endUnix = new DateTimeOffset(expedition.EndTimeUtc).ToUnixTimeSeconds();
 
-        var cardList = string.Join("\n", expedition.SentCards.Select(c => $"`{c.Name}` ({c.Rarity})"));
+        var cardList = string.Join("\n", collection.CardsOnExpedition.Select(c => $"`{c.Name}` ({c.Rarity})"));
 
         var remaining = expedition.EndTimeUtc - DateTime.UtcNow;
 
@@ -159,12 +159,13 @@ public sealed class ExpeditionModule(
             return;
         }
 
-        var location = ExpeditionSettingsProvider.GetLocationById(expedition.LocationId);
+        var location = locations.GetLocationById(expedition.LocationId);
 
         // Roll coin reward
-        double coinReward = location == null
-            ? 0.0
-            : location.MinReward + _random.NextDouble() * (location.MaxReward - location.MinReward);
+        decimal coinReward = location == null
+            ? 0m
+            : Money.FromDouble(location.MinReward + _random.NextDouble() * (location.MaxReward - location.MinReward));
+
 
         collection.Balance += coinReward;
 
@@ -190,7 +191,8 @@ public sealed class ExpeditionModule(
             rewardText += "\n🃏 " + string.Join(", ", rewardCards.Select(c => $"`{c.Name}` ({c.Rarity})"));
         }
 
-        ExpeditionCards.Unlock(collection.Cards, expedition.SentCards);
+        foreach (var card in collection.CardsOnExpedition.ToList())
+            card.IsLocked = false;
 
         // Reset the expedition so a new one can be started
         collection.ActiveExpedition = null;

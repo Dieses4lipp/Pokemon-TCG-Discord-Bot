@@ -56,6 +56,13 @@ jobs:
             test -f /app/Data/expeditionSettings.json &&
             test -f /app/Assets/sets_covers/default.jpg &&
             test "$(id -u)" != 0'
+          # With a fake token the bot migrates the database, then retries the login until killed:
+          # proves the native SQLite library loads and /app/data is the only write path needed
+          mkdir -m 777 smoke-data
+          out=$(timeout 30 $RUN -e TOKEN=smoke-test -v "$PWD/smoke-data:/app/data" pokebot:ci 2>&1) || true
+          echo "$out"
+          echo "$out" | grep -q "Database /app/data/bot.db ready"
+          test -f smoke-data/bot.db
           echo "smoke test passed"
 
       - name: Log in to GHCR

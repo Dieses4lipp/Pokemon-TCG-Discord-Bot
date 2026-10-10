@@ -76,6 +76,9 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
    # Optional: Discord user ID allowed to run the admin commands (/lockset, /addbalance, /restart, ...).
    # Defaults to the owner of the Discord application.
    OWNER_ID=your_discord_user_id
+   # Optional: where the SQLite database lives. Defaults to data/bot.db next to the binary
+   # (/app/data/bot.db in the container).
+   DATABASE_PATH=data/bot.db
    ```
 
 3. **Restore Dependencies and Build:**
@@ -101,6 +104,10 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
 - **API Endpoints:**  
   The bot uses endpoints from the Pokémon TCG API to fetch card and set data. Update these in the `CardApiClient` class if necessary.
 
+- **Storage:**  
+  Collections, balances, expeditions, locked sets, the on/off switch and open trades and packs live in one SQLite file (`DATABASE_PATH`, default `data/bot.db`). The schema is created and upgraded on startup. Every card copy has its own ID, balances are stored in cents, and a trade writes both collections in one transaction.  
+  On the first start the bot imports the JSON files older versions kept in `UserCards/` (`*.json`, `Left/*.json`, `State/botState.json`). The files are only read, never changed; pending trades are not imported and have to be proposed again. The import runs once and skips users the database already has.
+
 - **Logging:**  
   Logging goes through `Microsoft.Extensions.Logging` to the console (one line per entry, with timestamp), including full exceptions with stack traces.
 
@@ -108,7 +115,7 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
   Profiles (cards per pack, slots, rarity odds, price) are edited by hand in `Data/packSettings.json`. The `sets` section is generated from the folders in `Assets/sets_covers`: after adding a cover folder, run `python tools/gen_pack_settings.py`. To check the rarity names in the profiles against TCGdex, run `python tools/check_pack_rarities.py`; it lists every rarity a set has that no slot can roll.
 
 - **Tests:**  
-  `dotnet test` runs the tests in `tests/DiscordBot.Tests` (pack building, pack settings validation, and a check that the shipped `Data/packSettings.json` is valid). CI runs them before building the image.
+  `dotnet test` runs the tests in `tests/DiscordBot.Tests` (pack building, pack settings validation and a check that the shipped `Data/packSettings.json` is valid, trades and expeditions, the SQLite repository and the JSON import). CI runs them before building the image.
 
 - **Security Note:**  
   **Never share your bot token publicly!** Always store it securely in your environment variables or configuration files (e.g., the `.env` file). If your token is ever exposed, reset it immediately through the [Discord Developer Portal](https://discord.com/developers/applications).
@@ -187,6 +194,12 @@ Once the bot is running and added to your Discord server, interact with it using
 
 - **`/userinfo [user]`**  
   Shows a user's balance, collection size, stats, favorite card and running expedition. *(Admin only)*
+
+- **`/expedition-admin list` / `edit [location] ...` / `reload`**  
+  Lists the expedition locations, changes one (only the options you pass: name, duration, reward range, card reward chance, count and set, `random` for a random set) or resets all of them to `Data/expeditionSettings.json`. Locations live in the database: the file only fills it on the first start and is what `reload` resets to, so edits survive restarts and deploys. *(Admin only)*
+
+- **`/expedition-admin inspect [user]` / `finish [user]`**  
+  Shows a user's running expedition, or ends it now so the user can claim it right away. *(Admin only)*
 
 - **`/stats`**  
   Displays various statistics about the bot’s usage and performance. *(Admin only)*

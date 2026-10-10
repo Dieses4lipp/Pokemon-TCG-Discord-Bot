@@ -5,7 +5,10 @@ services:
     restart: unless-stopped
     env_file: .env
     volumes:
-      - ./UserCards:/app/UserCards
+      # SQLite database (bot.db + WAL files); must exist and be owned by uid 1654 before the first start
+      - ./data:/app/data
+      # JSON files from before the database, read once by the import at startup and kept as a backup
+      - ./UserCards:/app/UserCards:ro
     read_only: true
     tmpfs:
       - /tmp:size=16m,mode=1777

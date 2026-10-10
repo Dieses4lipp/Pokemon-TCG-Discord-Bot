@@ -96,7 +96,7 @@ public sealed class AdminModule(
         await DeferAsync(ephemeral: true);
 
         var collection = await users.LoadUserCardsAsync(user.Id);
-        double newBalance = collection.Balance + amount;
+        decimal newBalance = collection.Balance + Money.FromDouble(amount);
 
         if (newBalance < 0)
         {
@@ -120,7 +120,7 @@ public sealed class AdminModule(
             return;
         }
 
-        await ChangeBalanceAsync(user, await users.LoadUserCardsAsync(user.Id), amount);
+        await ChangeBalanceAsync(user, await users.LoadUserCardsAsync(user.Id), Money.FromDouble(amount));
     }
 
     [SlashCommand("givecard", "Adds a card to a user's collection. (Admin only)")]
@@ -164,7 +164,11 @@ public sealed class AdminModule(
             return;
         }
 
-        var card = matches.FirstOrDefault(c => !c.IsLocked);
+        // Keep the favorite copy as long as there is another one to remove
+        var card = matches
+            .Where(c => !c.IsLocked)
+            .OrderBy(c => c.InstanceId == collection.FavoriteCardId)
+            .FirstOrDefault();
         if (card == null)
         {
             await FollowupAsync($"🔒 Every copy of `{matches[0].Name}` is on an expedition and can't be removed.");
@@ -172,14 +176,6 @@ public sealed class AdminModule(
         }
 
         collection.Cards.Remove(card);
-        if (collection.FavoriteCard != null &&
-            collection.FavoriteCard.Name == card.Name &&
-            collection.FavoriteCard.Rarity == card.Rarity &&
-            !collection.Cards.Any(c => c.Name == card.Name && c.Rarity == card.Rarity))
-        {
-            collection.FavoriteCard = null;
-        }
-
         await users.SaveUserCardsAsync(collection);
 
         logger.LogInformation("Admin {AdminId} removed card {CardName} ({Rarity}) from user {UserId}",
@@ -205,7 +201,7 @@ public sealed class AdminModule(
             .AddField("Favorite", collection.FavoriteCard == null ? "—" : $"`{collection.FavoriteCard.Name}` ({collection.FavoriteCard.Rarity})", true)
             .AddField("Expedition", expedition == null
                 ? "—"
-                : $"`{expedition.LocationId}`, {expedition.SentCards.Count} card(s), returns <t:{new DateTimeOffset(expedition.EndTimeUtc).ToUnixTimeSeconds()}:R>", true)
+                : $"`{expedition.LocationId}`, {collection.CardsOnExpedition.Count()} card(s), returns <t:{new DateTimeOffset(expedition.EndTimeUtc).ToUnixTimeSeconds()}:R>", true)
             .WithColor(Color.Blue)
             .Build();
 
@@ -222,9 +218,10 @@ public sealed class AdminModule(
         Program.RestartBot();
     }
 
-    private async Task ChangeBalanceAsync(IUser user, UserCardCollection collection, double newBalance)
+    private async Task ChangeBalanceAsync(IUser user, UserCardCollection collection, decimal newBalance)
     {
-        double oldBalance = collection.Balance;
+        decimal oldBalance = collection.Balance;
+
         collection.Balance = newBalance;
         await users.SaveUserCardsAsync(collection);
 

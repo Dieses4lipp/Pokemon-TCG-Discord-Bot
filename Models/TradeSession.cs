@@ -18,7 +18,7 @@
 /// <param name="moneyToReceive">
 ///     The amount of money the sender wants to receive.
 /// </param>
-public class TradeSession(ulong senderId, ulong receiverId, Card cardToTrade, Card? cardToReceive, double moneyToReceive)
+public class TradeSession(ulong senderId, ulong receiverId, Card cardToTrade, Card? cardToReceive, decimal moneyToReceive)
 {
     /// <summary>
     ///     Gets the ID of the user who is sending the card.
@@ -43,7 +43,8 @@ public class TradeSession(ulong senderId, ulong receiverId, Card cardToTrade, Ca
     /// <summary>
     ///     Gets the amount of money requested, if any.
     /// </summary>
-    public double MoneyToReceive { get; } = moneyToReceive;
+    public decimal MoneyToReceive { get; } = moneyToReceive;
+
 
     /// <summary>
     ///     Gets or sets when the trade was proposed, used to expire trades nobody answers.

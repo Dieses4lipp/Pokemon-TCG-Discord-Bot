@@ -44,7 +44,7 @@ public sealed class PullModule(
         {
             // Pack layout (card count, slot odds, price) and covers come from Data/packSettings.json
             PackProfile profile = packSettings.GetProfile(setId);
-            double packCost = profile.PackPrice;
+            decimal packCost = Money.FromDouble(profile.PackPrice);
 
             // Check the balance before loading any cards, so broke users cost no API calls
             if (!await HasEnoughBalanceAsync(packCost))
@@ -188,27 +188,28 @@ public sealed class PullModule(
             .WithButton("💵", "sell_pack", ButtonStyle.Danger)
             .Build();
 
-        Card cardToSave = session.Cards[session.CurrentIndex];
-        var cardIdentifier = $"{cardToSave.Name}_{cardToSave.Rarity}";
+        int cardIndex = session.CurrentIndex;
 
-        UserCardCollection collection = await users.LoadUserCardsAsync(session.UserId);
-
-        if (session.SavedCardIdentifiers.Contains(cardIdentifier))
+        if (session.SavedCardIndices.Contains(cardIndex))
         {
             await ModifyOriginalResponseAsync(m => m.Components = disabledButtons);
             return;
         }
 
-        session.SavedCardIdentifiers.Add(cardIdentifier);
-        await stateStore.SaveAsync();
+        UserCardCollection collection = await users.LoadUserCardsAsync(session.UserId);
 
+        // Checked before marking the card saved, so a card that did not fit is still sold with the pack
         if (collection.Cards.Count >= 10)
         {
             await FollowupAsync("❌ Your inventory is full (Max 10 cards)! Delete some cards in `/inventory` first.", ephemeral: true);
             return;
         }
 
-        collection.Cards.Add(cardToSave);
+        session.SavedCardIndices.Add(cardIndex);
+        await stateStore.SaveAsync();
+
+        // A copy, so the pack session never shares an instance ID with the saved card
+        collection.Cards.Add(session.Cards[cardIndex] with { InstanceId = 0 });
         await users.SaveUserCardsAsync(collection);
 
         await ModifyOriginalResponseAsync(m => m.Components = disabledButtons);
@@ -233,19 +234,18 @@ public sealed class PullModule(
             return;
         await stateStore.SaveAsync();
 
-        double totalEarned = 0;
+        decimal totalEarned = 0;
         int cardsSold = 0;
 
-        foreach (var card in session.Cards)
+        foreach (var (card, index) in session.Cards.Select((card, index) => (card, index)))
         {
-            var identifier = $"{card.Name}_{card.Rarity}";
-            if (!session.SavedCardIdentifiers.Contains(identifier))
+            if (!session.SavedCardIndices.Contains(index))
             {
-                double marketPrice =
+                decimal marketPrice = Money.FromDouble(
                     card.Pricing?.TcgPlayer?.Market ??
                     card.Pricing?.TcgPlayer?.Low ??
                     card.Pricing?.Cardmarket?.Avg ??
-                    0.50;
+                    0.50);
 
                 totalEarned += marketPrice;
                 cardsSold++;
@@ -287,7 +287,7 @@ public sealed class PullModule(
         session.CurrentIndex = (session.CurrentIndex + direction + session.Cards.Count) % session.Cards.Count;
 
         var currentCard = session.Cards[session.CurrentIndex];
-        bool isSaved = session.SavedCardIdentifiers.Contains($"{currentCard.Name}_{currentCard.Rarity}");
+        bool isSaved = session.SavedCardIndices.Contains(session.CurrentIndex);
 
         var buttons = new ComponentBuilder()
             .WithButton("Previous", "prev_card", ButtonStyle.Secondary)
@@ -326,7 +326,7 @@ public sealed class PullModule(
     /// <returns>
     ///     <see langword="true"/> if the user's balance covers the pack.
     /// </returns>
-    private async Task<bool> HasEnoughBalanceAsync(double packCost)
+    private async Task<bool> HasEnoughBalanceAsync(decimal packCost)
     {
         var userCollection = await users.LoadUserCardsAsync(Context.User.Id);
         if (userCollection.Balance >= packCost)
@@ -345,7 +345,8 @@ public sealed class PullModule(
     /// <param name="balance">
     ///     The user's current balance.
     /// </param>
-    private Task SendInsufficientBalanceAsync(double packCost, double balance)
+    private Task SendInsufficientBalanceAsync(decimal packCost, decimal balance)
+
     {
         return FollowupAsync(
             $"❌ **Insufficient balance!**\n\n" +

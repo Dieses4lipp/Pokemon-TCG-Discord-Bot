@@ -7,7 +7,7 @@ namespace DiscordBot.Modules.Expedition;
 /// <summary>
 ///     Suggests the configured expedition locations, shortest first.
 /// </summary>
-public sealed class ExpeditionLocationAutocompleteHandler : AutocompleteHandler
+public sealed class ExpeditionLocationAutocompleteHandler(ExpeditionLocationStore locations) : AutocompleteHandler
 {
     public override Task<AutocompletionResult> GenerateSuggestionsAsync(
         IInteractionContext context, IAutocompleteInteraction autocompleteInteraction,
@@ -15,7 +15,7 @@ public sealed class ExpeditionLocationAutocompleteHandler : AutocompleteHandler
     {
         var userInput = autocompleteInteraction.Data.Current.Value?.ToString() ?? "";
 
-        var suggestions = ExpeditionSettingsProvider.Locations
+        var suggestions = locations.Locations
             .Where(l => l.Name.Contains(userInput, StringComparison.OrdinalIgnoreCase))
             .OrderBy(l => l.DurationMinutes)
             .Select(l => new AutocompleteResult($"{l.Name} ({l.DurationMinutes} min)", l.Id))

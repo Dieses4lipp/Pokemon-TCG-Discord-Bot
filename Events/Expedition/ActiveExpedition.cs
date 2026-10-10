@@ -1,10 +1,10 @@
-using DiscordBot.Models;
-
 namespace DiscordBot.Events.Expedition;
 
 /// <summary>
-///     Represents an expedition currently in progress for a user.
+///     Represents an expedition currently in progress for a user. The cards sent are the locked
+///     cards of the collection, see <see cref="Models.UserCardCollection.CardsOnExpedition"/>.
 /// </summary>
+
 public class ActiveExpedition
 {
     /// <summary>
@@ -22,10 +22,4 @@ public class ActiveExpedition
     ///     Gets or sets the UTC time the expedition finishes and can be claimed.
     /// </summary>
     public DateTime EndTimeUtc { get; set; }
-
-    /// <summary>
-    ///     Gets or sets the cards sent on the expedition (locked for the duration). Matched back
-    ///     to the user's collection by Name + Rarity.
-    /// </summary>
-    public List<Card> SentCards { get; set; } = [];
 }
