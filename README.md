@@ -108,6 +108,9 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
   Collections, balances, expeditions, locked sets, the on/off switch and open trades and packs live in one SQLite file (`DATABASE_PATH`, default `data/bot.db`). The schema is created and upgraded on startup. Every card copy has its own ID, balances are stored in cents, and a trade writes both collections in one transaction.  
   On the first start the bot imports the JSON files older versions kept in `UserCards/` (`*.json`, `Left/*.json`, `State/botState.json`). The files are only read, never changed; pending trades are not imported and have to be proposed again. The import runs once and skips users the database already has.
 
+- **Backups:**  
+  Once a day the bot writes a consistent copy of the database to `backups/` next to it (`/app/data/backups` in the container) and keeps the newest 7. `ops/pokebot-backup.sh` with its systemd timer copies the newest one to the NAS share; it needs `smbclient` and a credentials file on the host (see the script). To restore, stop the bot and replace `bot.db` with a copy (delete `bot.db-wal` and `bot.db-shm` too).
+
 - **Logging:**  
   Logging goes through `Microsoft.Extensions.Logging` to the console (one line per entry, with timestamp), including full exceptions with stack traces.
 
