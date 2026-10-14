@@ -49,6 +49,36 @@ public sealed class BotDatabase
     public string Description { get; }
 
     /// <summary>
+    ///     Picks the database from DB_PROVIDER (<c>sqlite</c>, the default, or <c>postgres</c>).
+    ///     SQLite uses the file at DATABASE_PATH or <see cref="DefaultPath"/>; Postgres needs the
+    ///     connection string in DB_CONNECTION.
+    /// </summary>
+    /// <param name="getVariable">
+    ///     Reads an environment variable; <see langword="null"/> if it is not set.
+    /// </param>
+    /// <exception cref="InvalidOperationException">
+    ///     DB_PROVIDER is unknown, or DB_CONNECTION is missing for Postgres or set for SQLite.
+    /// </exception>
+    public static BotDatabase FromEnvironment(Func<string, string?> getVariable)
+    {
+        string provider = getVariable("DB_PROVIDER") is { Length: > 0 } value ? value.Trim().ToLowerInvariant() : "sqlite";
+        string? connection = getVariable("DB_CONNECTION") is { Length: > 0 } connectionValue ? connectionValue : null;
+
+        switch (provider)
+        {
+            case "sqlite":
+                // Most likely DB_PROVIDER was forgotten; silently using a local file would split the data
+                if (connection != null)
+                    throw new InvalidOperationException("DB_CONNECTION is set but DB_PROVIDER is sqlite; set DB_PROVIDER=postgres, or DATABASE_PATH for an SQLite file.");
+                return Sqlite(getVariable("DATABASE_PATH") is { Length: > 0 } path ? path : DefaultPath);
+            case "postgres":
+                return Postgres(connection ?? throw new InvalidOperationException("DB_PROVIDER is postgres but DB_CONNECTION is not set."));
+            default:
+                throw new InvalidOperationException($"DB_PROVIDER '{provider}' is unknown; use sqlite or postgres.");
+        }
+    }
+
+    /// <summary>
     ///     An SQLite database in the file at <paramref name="path"/>; its directory is created.
     /// </summary>
     public static BotDatabase Sqlite(string path)

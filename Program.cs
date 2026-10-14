@@ -3,6 +3,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordBot.Core;
+using DiscordBot.Core.Storage;
 using DotNetEnv;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -79,6 +80,18 @@ internal static class Program
         else
             logger.LogInformation("Owner commands are limited to user {OwnerId}", ownerId);
 
+        BotDatabase database;
+        try
+        {
+            database = BotDatabase.FromEnvironment(Environment.GetEnvironmentVariable);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+        {
+            // ArgumentException: a DB_CONNECTION Npgsql cannot parse
+            logger.LogCritical("Database settings are invalid: {Error}", ex.Message);
+            return;
+        }
+
         logger.LogInformation("Starting bot");
 
         // Configure the Discord client
@@ -102,10 +115,6 @@ internal static class Program
             LogLevel = LogSeverity.Info,
         });
 
-        string databasePath = Environment.GetEnvironmentVariable("DATABASE_PATH") is { Length: > 0 } configuredPath
-            ? configuredPath
-            : BotDatabase.DefaultPath;
-        var database = BotDatabase.Sqlite(databasePath);
         var appliedMigrations = await database.MigrateAsync(logger);
         logger.LogInformation("Database {Database} ready ({MigrationCount} migrations applied: {Migrations})",
             database.Description, appliedMigrations.Count, appliedMigrations);
@@ -140,7 +149,10 @@ internal static class Program
         await services.GetRequiredService<ExpeditionLocationStore>().LoadAsync();
         _ = services.GetRequiredService<UserRepository>().RunArchivePurgeLoopAsync();
         _ = services.GetRequiredService<SessionCleanup>().RunAsync();
-        _ = services.GetRequiredService<DatabaseBackup>().RunAsync();
+        if (database.Provider == DatabaseProvider.Sqlite)
+            _ = services.GetRequiredService<DatabaseBackup>().RunAsync();
+        else
+            logger.LogInformation("Database backups are left to the Postgres server");
         await services.GetRequiredService<Bot>().StartAsync(botToken);
         // Log the bot's start time and keep the application running until the watchdog exits it
         logger.LogInformation("Bot started at {StartedAtUtc:O}", services.GetRequiredService<BotState>().StartedAtUtc);
