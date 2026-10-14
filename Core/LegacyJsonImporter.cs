@@ -1,7 +1,8 @@
 using System.Globalization;
 using DiscordBot.Models;
 using DiscordBot.Models.Legacy;
-using Microsoft.Data.Sqlite;
+using DiscordBot.Core.Storage;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
@@ -34,12 +35,11 @@ public sealed class LegacyJsonImporter(BotDatabase database, ILogger<LegacyJsonI
     /// </returns>
     public async Task<LegacyImportResult?> ImportAsync(string directory)
     {
-        await using var connection = await database.OpenAsync();
+        await using var db = database.CreateContext();
 
-        if (await SqliteCommands.ScalarAsync(connection, null,
-                "SELECT value FROM settings WHERE key = $key;", ("$key", ImportedAtKey)) is string importedAt)
+        if (await db.Settings.FindAsync(ImportedAtKey) is { } importedAt)
         {
-            logger.LogDebug("Legacy JSON files were imported at {ImportedAt}, skipping", importedAt);
+            logger.LogDebug("Legacy JSON files were imported at {ImportedAt}, skipping", importedAt.Value);
             return null;
         }
 
@@ -50,7 +50,7 @@ public sealed class LegacyJsonImporter(BotDatabase database, ILogger<LegacyJsonI
             return null;
         }
 
-        await using var transaction = connection.BeginTransaction();
+        await using var transaction = await db.Database.BeginTransactionAsync();
 
         int users = 0, archivedUsers = 0, skippedUsers = 0, cards = 0;
 
@@ -66,8 +66,7 @@ public sealed class LegacyJsonImporter(BotDatabase database, ILogger<LegacyJsonI
                 ? legacy.UserId
                 : ulong.Parse(Path.GetFileNameWithoutExtension(path), CultureInfo.InvariantCulture);
 
-            if (await SqliteCommands.ScalarAsync(connection, transaction,
-                    "SELECT 1 FROM users WHERE user_id = $userId;", ("$userId", (long)userId)) != null)
+            if (await db.Users.AnyAsync(u => u.UserId == userId))
             {
                 logger.LogWarning("User {UserId} already exists in the database, skipping {File}", userId, path);
                 skippedUsers++;
@@ -75,7 +74,7 @@ public sealed class LegacyJsonImporter(BotDatabase database, ILogger<LegacyJsonI
             }
 
             var collection = ToCollection(userId, legacy);
-            await UserRepository.SaveAsync(connection, transaction, [collection]);
+            await UserRepository.SaveAsync(db, [collection]);
 
             // The favorite was a copy of the card; point it at the first copy with its name and rarity
             var favorite = legacy.FavoriteCard == null
@@ -84,16 +83,15 @@ public sealed class LegacyJsonImporter(BotDatabase database, ILogger<LegacyJsonI
             if (favorite != null)
             {
                 collection.FavoriteCardId = favorite.InstanceId;
-                await UserRepository.SaveAsync(connection, transaction, [collection]);
+                await UserRepository.SaveAsync(db, [collection]);
             }
 
             if (archived)
             {
                 // The archive time was stamped on the file when the user left
-                await SqliteCommands.ExecuteAsync(connection, transaction,
-                    "UPDATE users SET left_at_utc = $leftAt WHERE user_id = $userId;",
-                    ("$userId", (long)userId),
-                    ("$leftAt", File.GetLastWriteTimeUtc(path).ToString("O", CultureInfo.InvariantCulture)));
+                DateTime? leftAtUtc = File.GetLastWriteTimeUtc(path);
+                await db.Users.Where(u => u.UserId == userId)
+                    .ExecuteUpdateAsync(setters => setters.SetProperty(u => u.LeftAtUtc, leftAtUtc));
                 archivedUsers++;
             }
 
@@ -101,11 +99,10 @@ public sealed class LegacyJsonImporter(BotDatabase database, ILogger<LegacyJsonI
             cards += collection.Cards.Count;
         }
 
-        bool botStateImported = await ImportBotStateAsync(connection, transaction, Path.Combine(directory, "State", "botState.json"));
+        bool botStateImported = await ImportBotStateAsync(db, Path.Combine(directory, "State", "botState.json"));
 
-        await SqliteCommands.ExecuteAsync(connection, transaction,
-            "INSERT INTO settings (key, value) VALUES ($key, $value);",
-            ("$key", ImportedAtKey), ("$value", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)));
+        db.Settings.Add(new SettingRow { Key = ImportedAtKey, Value = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture) });
+        await db.SaveChangesAsync();
 
         await transaction.CommitAsync();
 
@@ -141,12 +138,12 @@ public sealed class LegacyJsonImporter(BotDatabase database, ILogger<LegacyJsonI
     /// <returns>
     ///     <see langword="true"/> if the file existed and the database had no bot state yet.
     /// </returns>
-    private async Task<bool> ImportBotStateAsync(SqliteConnection connection, SqliteTransaction transaction, string path)
+    private async Task<bool> ImportBotStateAsync(BotDbContext db, string path)
     {
         if (!File.Exists(path))
             return false;
 
-        if (await SqliteCommands.ScalarAsync(connection, transaction, "SELECT COUNT(*) FROM settings;") is long and > 0)
+        if (await db.Settings.AnyAsync())
         {
             logger.LogWarning("The database already has a bot state, skipping {File}", path);
             return false;
@@ -166,7 +163,7 @@ public sealed class LegacyJsonImporter(BotDatabase database, ILogger<LegacyJsonI
                 .ToHashSet(),
         }).ToList();
 
-        await BotStateStore.WriteAsync(connection, transaction, legacy.BotActive, legacy.PullCount, legacy.LockedSets,
+        await BotStateStore.WriteAsync(db, legacy.BotActive, legacy.PullCount, legacy.LockedSets,
             new PersistedSessions { PackSessions = packSessions });
         return true;
     }

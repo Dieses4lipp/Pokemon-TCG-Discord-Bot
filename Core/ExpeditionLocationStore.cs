@@ -1,5 +1,6 @@
+using DiscordBot.Core.Storage;
 using DiscordBot.Models;
-using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
@@ -41,13 +42,13 @@ public sealed class ExpeditionLocationStore(BotDatabase database, string seedFil
     /// </returns>
     public async Task LoadAsync()
     {
-        await using (var connection = await database.OpenAsync())
+        await using (var db = database.CreateContext())
         {
-            if (await SqliteCommands.ScalarAsync(connection, null, "SELECT COUNT(*) FROM expedition_locations;") is 0L)
+            if (!await db.ExpeditionLocations.AnyAsync())
             {
                 var seed = ReadSeedFile();
-                await using var transaction = connection.BeginTransaction();
-                await ReplaceAllAsync(connection, transaction, seed);
+                await using var transaction = await db.Database.BeginTransactionAsync();
+                await ReplaceAllAsync(db, seed);
                 await transaction.CommitAsync();
                 logger.LogInformation("Filled the expedition locations from {SeedFile} ({Count} locations)", seedFilePath, seed.Count);
             }
@@ -66,10 +67,10 @@ public sealed class ExpeditionLocationStore(BotDatabase database, string seedFil
     {
         var seed = ReadSeedFile();
 
-        await using (var connection = await database.OpenAsync())
-        await using (var transaction = connection.BeginTransaction())
+        await using (var db = database.CreateContext())
+        await using (var transaction = await db.Database.BeginTransactionAsync())
         {
-            await ReplaceAllAsync(connection, transaction, seed);
+            await ReplaceAllAsync(db, seed);
             await transaction.CommitAsync();
         }
 
@@ -88,9 +89,22 @@ public sealed class ExpeditionLocationStore(BotDatabase database, string seedFil
         if (ExpeditionLocationRules.Validate(location) is { } error)
             throw new ArgumentException($"Expedition location '{location.Id}' is invalid: {error}.", nameof(location));
 
-        await using (var connection = await database.OpenAsync())
+        await using (var db = database.CreateContext())
         {
-            await UpsertAsync(connection, null, location);
+            // The ID is matched case-insensitively, as admins type it; the stored spelling stays
+            var existing = (await db.ExpeditionLocations.ToListAsync())
+                .FirstOrDefault(l => l.Id.Equals(location.Id, StringComparison.OrdinalIgnoreCase));
+            var stored = ToStored(location);
+            if (existing == null)
+            {
+                db.ExpeditionLocations.Add(stored);
+            }
+            else
+            {
+                stored.Id = existing.Id;
+                db.Entry(existing).CurrentValues.SetValues(stored);
+            }
+            await db.SaveChangesAsync();
         }
 
         await RefreshAsync();
@@ -98,29 +112,8 @@ public sealed class ExpeditionLocationStore(BotDatabase database, string seedFil
 
     private async Task RefreshAsync()
     {
-        var locations = new List<ExpeditionLocation>();
-
-        await using var connection = await database.OpenAsync();
-        await using var command = SqliteCommands.Create(connection, null, """
-            SELECT id, name, duration_minutes, min_reward, max_reward, card_reward_chance, card_reward_count, card_reward_set_id
-            FROM expedition_locations ORDER BY id;
-            """);
-        await using var reader = await command.ExecuteReaderAsync();
-        while (await reader.ReadAsync())
-        {
-            locations.Add(new ExpeditionLocation
-            {
-                Id = reader.GetString(0),
-                Name = reader.GetString(1),
-                DurationMinutes = reader.GetInt32(2),
-                MinReward = reader.GetDouble(3),
-                MaxReward = reader.GetDouble(4),
-                CardRewardChance = reader.GetDouble(5),
-                CardRewardCount = reader.GetInt32(6),
-                CardRewardSetId = reader.IsDBNull(7) ? null : reader.GetString(7),
-            });
-        }
-
+        await using var db = database.CreateContext();
+        List<ExpeditionLocation> locations = await db.ExpeditionLocations.AsNoTracking().OrderBy(l => l.Id).ToListAsync();
         Volatile.Write(ref _locations, locations);
     }
 
@@ -147,32 +140,26 @@ public sealed class ExpeditionLocationStore(BotDatabase database, string seedFil
         return locations;
     }
 
-    private static async Task ReplaceAllAsync(SqliteConnection connection, SqliteTransaction transaction, IEnumerable<ExpeditionLocation> locations)
+    private static async Task ReplaceAllAsync(BotDbContext db, IEnumerable<ExpeditionLocation> locations)
     {
-        await SqliteCommands.ExecuteAsync(connection, transaction, "DELETE FROM expedition_locations;");
-        foreach (var location in locations)
-            await UpsertAsync(connection, transaction, location);
+        await db.ExpeditionLocations.ExecuteDeleteAsync();
+        db.ExpeditionLocations.AddRange(locations.Select(ToStored));
+        await db.SaveChangesAsync();
     }
 
-    private static Task<int> UpsertAsync(SqliteConnection connection, SqliteTransaction? transaction, ExpeditionLocation location) =>
-        SqliteCommands.ExecuteAsync(connection, transaction, """
-            INSERT INTO expedition_locations (id, name, duration_minutes, min_reward, max_reward, card_reward_chance, card_reward_count, card_reward_set_id)
-            VALUES ($id, $name, $durationMinutes, $minReward, $maxReward, $cardRewardChance, $cardRewardCount, $cardRewardSetId)
-            ON CONFLICT (id) DO UPDATE SET
-                name = excluded.name,
-                duration_minutes = excluded.duration_minutes,
-                min_reward = excluded.min_reward,
-                max_reward = excluded.max_reward,
-                card_reward_chance = excluded.card_reward_chance,
-                card_reward_count = excluded.card_reward_count,
-                card_reward_set_id = excluded.card_reward_set_id;
-            """,
-            ("$id", location.Id),
-            ("$name", location.Name),
-            ("$durationMinutes", location.DurationMinutes),
-            ("$minReward", location.MinReward),
-            ("$maxReward", location.MaxReward),
-            ("$cardRewardChance", location.CardRewardChance),
-            ("$cardRewardCount", location.CardRewardCount),
-            ("$cardRewardSetId", string.IsNullOrWhiteSpace(location.CardRewardSetId) ? null : location.CardRewardSetId));
+    /// <summary>
+    ///     A copy to hand to the database, so the context never tracks an object callers still hold.
+    ///     An empty reward set means none.
+    /// </summary>
+    private static ExpeditionLocation ToStored(ExpeditionLocation location) => new()
+    {
+        Id = location.Id,
+        Name = location.Name,
+        DurationMinutes = location.DurationMinutes,
+        MinReward = location.MinReward,
+        MaxReward = location.MaxReward,
+        CardRewardChance = location.CardRewardChance,
+        CardRewardCount = location.CardRewardCount,
+        CardRewardSetId = string.IsNullOrWhiteSpace(location.CardRewardSetId) ? null : location.CardRewardSetId,
+    };
 }

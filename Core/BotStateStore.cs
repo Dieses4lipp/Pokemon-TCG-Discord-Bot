@@ -1,6 +1,7 @@
 using System.Globalization;
 using DiscordBot.Models;
-using Microsoft.Data.Sqlite;
+using DiscordBot.Core.Storage;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
@@ -26,23 +27,10 @@ public sealed class BotStateStore(BotDatabase database, BotState botState, Sessi
     /// </returns>
     public async Task LoadAsync()
     {
-        await using var connection = await database.OpenAsync();
+        await using var db = database.CreateContext();
 
-        var settings = new Dictionary<string, string>();
-        await using (var command = SqliteCommands.Create(connection, null, "SELECT key, value FROM settings;"))
-        await using (var reader = await command.ExecuteReaderAsync())
-        {
-            while (await reader.ReadAsync())
-                settings[reader.GetString(0)] = reader.GetString(1);
-        }
-
-        var lockedSets = new List<string>();
-        await using (var command = SqliteCommands.Create(connection, null, "SELECT set_id FROM locked_sets;"))
-        await using (var reader = await command.ExecuteReaderAsync())
-        {
-            while (await reader.ReadAsync())
-                lockedSets.Add(reader.GetString(0));
-        }
+        var settings = await db.Settings.AsNoTracking().ToDictionaryAsync(s => s.Key, s => s.Value);
+        var lockedSets = await db.LockedSets.AsNoTracking().Select(l => l.SetId).ToListAsync();
 
         if (!settings.ContainsKey(BotActiveKey))
         {
@@ -77,9 +65,9 @@ public sealed class BotStateStore(BotDatabase database, BotState botState, Sessi
         await _writeLock.WaitAsync();
         try
         {
-            await using var connection = await database.OpenAsync();
-            await using var transaction = connection.BeginTransaction();
-            await WriteAsync(connection, transaction, botState.IsActive, botState.PullCount, botState.LockedSets,
+            await using var db = database.CreateContext();
+            await using var transaction = await db.Database.BeginTransactionAsync();
+            await WriteAsync(db, botState.IsActive, botState.PullCount, botState.LockedSets,
                 new PersistedSessions
                 {
                     ActiveTrades = [.. sessions.Trades],
@@ -100,8 +88,7 @@ public sealed class BotStateStore(BotDatabase database, BotState botState, Sessi
     /// <summary>
     ///     Replaces the stored runtime state inside a transaction the caller owns.
     /// </summary>
-    internal static async Task WriteAsync(SqliteConnection connection, SqliteTransaction transaction,
-        bool botActive, int pullCount, IEnumerable<string> lockedSets, PersistedSessions persistedSessions)
+    internal static async Task WriteAsync(BotDbContext db, bool botActive, int pullCount, IEnumerable<string> lockedSets, PersistedSessions persistedSessions)
     {
         (string Key, string Value)[] settings =
         [
@@ -112,16 +99,15 @@ public sealed class BotStateStore(BotDatabase database, BotState botState, Sessi
 
         foreach (var (key, value) in settings)
         {
-            await SqliteCommands.ExecuteAsync(connection, transaction,
-                "INSERT INTO settings (key, value) VALUES ($key, $value) ON CONFLICT (key) DO UPDATE SET value = excluded.value;",
-                ("$key", key), ("$value", value));
+            var row = await db.Settings.FindAsync(key);
+            if (row == null)
+                db.Settings.Add(new SettingRow { Key = key, Value = value });
+            else
+                row.Value = value;
         }
 
-        await SqliteCommands.ExecuteAsync(connection, transaction, "DELETE FROM locked_sets;");
-        foreach (var setId in lockedSets)
-        {
-            await SqliteCommands.ExecuteAsync(connection, transaction,
-                "INSERT OR IGNORE INTO locked_sets (set_id) VALUES ($setId);", ("$setId", setId));
-        }
+        await db.LockedSets.ExecuteDeleteAsync();
+        db.LockedSets.AddRange(lockedSets.Distinct().Select(setId => new LockedSetRow { SetId = setId }));
+        await db.SaveChangesAsync();
     }
 }

@@ -105,9 +105,10 @@ internal static class Program
         string databasePath = Environment.GetEnvironmentVariable("DATABASE_PATH") is { Length: > 0 } configuredPath
             ? configuredPath
             : BotDatabase.DefaultPath;
-        var database = new BotDatabase(databasePath);
-        int schemaVersion = await database.MigrateAsync();
-        logger.LogInformation("Database {DatabasePath} ready (schema version was {SchemaVersion})", databasePath, schemaVersion);
+        var database = BotDatabase.Sqlite(databasePath);
+        var appliedMigrations = await database.MigrateAsync(logger);
+        logger.LogInformation("Database {Database} ready ({MigrationCount} migrations applied: {Migrations})",
+            database.Description, appliedMigrations.Count, appliedMigrations);
 
         // One-shot move of the JSON files kept before the database; does nothing once done
         await new LegacyJsonImporter(database, loggerFactory.CreateLogger<LegacyJsonImporter>())

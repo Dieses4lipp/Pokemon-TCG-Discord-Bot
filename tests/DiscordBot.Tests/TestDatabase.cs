@@ -1,5 +1,6 @@
 using DiscordBot.Core;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DiscordBot.Tests;
 
@@ -24,8 +25,8 @@ public sealed class TestDatabase : IDisposable
     public static async Task<TestDatabase> CreateAsync()
     {
         string directory = Path.Combine(Path.GetTempPath(), "pokebot-tests", Guid.NewGuid().ToString("N"));
-        var database = new BotDatabase(Path.Combine(directory, "bot.db"));
-        await database.MigrateAsync();
+        var database = BotDatabase.Sqlite(Path.Combine(directory, "bot.db"));
+        await database.MigrateAsync(NullLogger.Instance);
         return new TestDatabase(directory, database);
     }
 
