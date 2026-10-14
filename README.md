@@ -79,7 +79,13 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
    # Optional: where the SQLite database lives. Defaults to data/bot.db next to the binary
    # (/app/data/bot.db in the container).
    DATABASE_PATH=data/bot.db
+   # Optional: sqlite (default) or postgres. Postgres needs DB_CONNECTION and keeps its tables
+   # in the schema "pokebot".
+   # DB_PROVIDER=postgres
+   # DB_CONNECTION=Host=db.lan;Port=5432;Database=apps;Username=pokebot;Password=...
    ```
+
+   `.env.example` lists every setting.
 
 3. **Restore Dependencies and Build:**
 
@@ -105,11 +111,15 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
   The bot uses endpoints from the Pokémon TCG API to fetch card and set data. Update these in the `CardApiClient` class if necessary.
 
 - **Storage:**  
-  Collections, balances, expeditions, locked sets, the on/off switch and open trades and packs live in one SQLite file (`DATABASE_PATH`, default `data/bot.db`). The schema is created and upgraded on startup. Every card copy has its own ID, balances are stored in cents, and a trade writes both collections in one transaction.  
+  Collections, balances, expeditions, locked sets, the on/off switch and open trades and packs live in one database, through EF Core: an SQLite file (`DATABASE_PATH`, default `data/bot.db`) or, with `DB_PROVIDER=postgres`, the Postgres database in `DB_CONNECTION` (tables in the schema `pokebot`, migration history included, so the database can be shared). An unknown `DB_PROVIDER`, or a `DB_CONNECTION` that is missing for Postgres or set without `DB_PROVIDER=postgres`, stops the bot at startup. The schema is created and upgraded on startup by the EF migrations in `Migrations/Sqlite` and `Migrations/Postgres`; an SQLite file from before EF Core is taken over as is (it already has the initial migration's schema). Every card copy has its own ID, balances are stored in cents, and a trade writes both collections in one transaction.  
+  New migrations are added per provider: `dotnet ef migrations add <Name> --context SqliteBotDbContext --output-dir Migrations/Sqlite`, and the same with `PostgresBotDbContext` and `Migrations/Postgres`.  
   On the first start the bot imports the JSON files older versions kept in `UserCards/` (`*.json`, `Left/*.json`, `State/botState.json`). The files are only read, never changed; pending trades are not imported and have to be proposed again. The import runs once and skips users the database already has.
 
+- **Moving to Postgres:**  
+  Stop the bot, then run it once with `--migrate-sqlite-to-postgres <path to bot.db>` and `DB_PROVIDER=postgres` plus `DB_CONNECTION` set (in the container: `docker compose run --rm -e DB_PROVIDER=postgres -e DB_CONNECTION=... bot --migrate-sqlite-to-postgres /app/data/bot.db`). It creates the schema, copies every row with its ID in one transaction and refuses a database that already holds bot data. Then set `DB_PROVIDER` and `DB_CONNECTION` for the bot and start it. The SQLite file is kept as it was, apart from EF Core's history table if it predates EF Core.
+
 - **Backups:**  
-  Once a day the bot writes a consistent copy of the database to `backups/` next to it (`/app/data/backups` in the container) and keeps the newest 7. `ops/pokebot-backup.sh` with its systemd timer copies the newest one to the NAS share; it needs `smbclient` and a credentials file on the host (see the script). To restore, stop the bot and replace `bot.db` with a copy (delete `bot.db-wal` and `bot.db-shm` too).
+  With SQLite, once a day the bot writes a consistent copy of the database to `backups/` next to it (`/app/data/backups` in the container) and keeps the newest 7. `ops/pokebot-backup.sh` with its systemd timer copies the newest one to the NAS share; it needs `smbclient` and a credentials file on the host (see the script). To restore, stop the bot and replace `bot.db` with a copy (delete `bot.db-wal` and `bot.db-shm` too). With Postgres the bot writes no backups; back up the database on the server.
 
 - **Logging:**  
   Logging goes through `Microsoft.Extensions.Logging` to the console (one line per entry, with timestamp), including full exceptions with stack traces.
@@ -118,7 +128,7 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
   Profiles (cards per pack, slots, rarity odds, price) are edited by hand in `Data/packSettings.json`. The `sets` section is generated from the folders in `Assets/sets_covers`: after adding a cover folder, run `python tools/gen_pack_settings.py`. To check the rarity names in the profiles against TCGdex, run `python tools/check_pack_rarities.py`; it lists every rarity a set has that no slot can roll.
 
 - **Tests:**  
-  `dotnet test` runs the tests in `tests/DiscordBot.Tests` (pack building, pack settings validation and a check that the shipped `Data/packSettings.json` is valid, trades and expeditions, the SQLite repository and the JSON import). CI runs them before building the image.
+  `dotnet test` runs the tests in `tests/DiscordBot.Tests` (pack building, pack settings validation and a check that the shipped `Data/packSettings.json` is valid, trades and expeditions, the repositories, the schema takeover of old `bot.db` files and the JSON import). The Postgres tests use the server in `POKEBOT_TEST_POSTGRES` (a connection string) or start one with Testcontainers; without either they are skipped, except in CI. CI runs them before building the image.
 
 - **Security Note:**  
   **Never share your bot token publicly!** Always store it securely in your environment variables or configuration files (e.g., the `.env` file). If your token is ever exposed, reset it immediately through the [Discord Developer Portal](https://discord.com/developers/applications).

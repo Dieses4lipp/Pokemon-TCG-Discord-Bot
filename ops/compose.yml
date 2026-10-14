@@ -3,9 +3,11 @@ services:
     image: ghcr.io/dieses4lipp/pokemon-tcg-discord-bot:main
     container_name: pokebot
     restart: unless-stopped
+    # TOKEN, OWNER_ID, and for Postgres DB_PROVIDER=postgres + DB_CONNECTION (see .env.example)
     env_file: .env
     volumes:
-      # SQLite database (bot.db + WAL files); must exist and be owned by uid 1654 before the first start
+      # SQLite database (bot.db + WAL files); must exist and be owned by uid 1654 before the first start.
+      # Unused with DB_PROVIDER=postgres; keep it as the source of --migrate-sqlite-to-postgres
       - ./data:/app/data
       # JSON files from before the database, read once by the import at startup and kept as a backup
       - ./UserCards:/app/UserCards:ro
