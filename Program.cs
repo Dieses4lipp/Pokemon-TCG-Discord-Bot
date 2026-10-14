@@ -45,7 +45,7 @@ internal static class Program
     /// <returns>
     ///     A task that represents the asynchronous operation.
     /// </returns>
-    public static async Task RunBotAsync()
+    public static async Task RunBotAsync(string[] args)
     {
         using var loggerFactory = LoggerFactory.Create(logging => logging.AddSimpleConsole(options =>
         {
@@ -56,6 +56,13 @@ internal static class Program
 
         // Load environment variables from the nearest .env file in the working directory or above
         Env.TraversePath().Load();
+
+        if (args is ["--migrate-sqlite-to-postgres", var sqlitePath])
+        {
+            Environment.ExitCode = await CopySqliteToPostgresAsync(sqlitePath, logger) ? 0 : 1;
+            return;
+        }
+
         string? botToken = Environment.GetEnvironmentVariable("TOKEN");
 
         if (string.IsNullOrEmpty(botToken))
@@ -160,11 +167,43 @@ internal static class Program
     }
 
     /// <summary>
-    ///     The main method that starts the bot asynchronously.
+    ///     Copies the SQLite database at <paramref name="sqlitePath"/> into the empty Postgres
+    ///     database DB_PROVIDER=postgres and DB_CONNECTION point to. Does not start the bot.
     /// </summary>
-    private static async Task Main(string[] _)
+    /// <returns>
+    ///     <see langword="true"/> if the copy was committed.
+    /// </returns>
+    private static async Task<bool> CopySqliteToPostgresAsync(string sqlitePath, ILogger logger)
+    {
+        try
+        {
+            var target = BotDatabase.FromEnvironment(Environment.GetEnvironmentVariable);
+            if (target.Provider != DatabaseProvider.Postgres)
+            {
+                logger.LogCritical("Set DB_PROVIDER=postgres and DB_CONNECTION to the target database for the copy");
+                return false;
+            }
+
+            var result = await SqliteToPostgresCopy.CopyAsync(BotDatabase.Sqlite(sqlitePath), target, logger);
+            logger.LogInformation(
+                "Copied {SqlitePath} to {Target}: {Users} users, {Cards} cards, {Expeditions} expeditions, {Settings} settings, {LockedSets} locked sets, {ExpeditionLocations} expedition locations",
+                sqlitePath, target.Description, result.Users, result.Cards, result.Expeditions, result.Settings, result.LockedSets, result.ExpeditionLocations);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogCritical(ex, "Copy from {SqlitePath} to Postgres failed; no rows were copied", sqlitePath);
+            return false;
+        }
+    }
+
+    /// <summary>
+    ///     The main method that starts the bot asynchronously, or runs
+    ///     <c>--migrate-sqlite-to-postgres &lt;path&gt;</c>.
+    /// </summary>
+    private static async Task Main(string[] args)
     {
         _currentProcess = Process.GetCurrentProcess();
-        await RunBotAsync();
+        await RunBotAsync(args);
     }
 }

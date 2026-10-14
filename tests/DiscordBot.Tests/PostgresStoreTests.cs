@@ -1,14 +1,15 @@
 using DiscordBot.Core;
 using DiscordBot.Events.Expedition;
 using DiscordBot.Models;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DiscordBot.Tests;
 
 /// <summary>
-///     The stores on Postgres. The SQLite tests cover the logic; these cover what
-///     differs per provider: the schema, ID and time mapping and the bulk statements.
+///     The stores and the copy tool on Postgres. The SQLite tests cover the logic; these cover what
+///     differs per provider: the schema, ID and time mapping, the bulk statements and the sequence.
 /// </summary>
 public sealed class PostgresStoreTests(PostgresServer server) : IClassFixture<PostgresServer>
 {
@@ -127,5 +128,52 @@ public sealed class PostgresStoreTests(PostgresServer server) : IClassFixture<Po
 
         Assert.Equal(count, store.Locations.Count);
         Assert.Equal("Edited", store.GetLocationById("mt-moon")?.Name);
+    }
+
+    [PostgresFact]
+    public async Task CopyTool_CopiesALegacySqliteDatabaseWithItsIds()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "pokebot-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            string sqlitePath = Path.Combine(directory, "bot.db");
+            await LegacySqliteSchema.CreateAsync(sqlitePath);
+            var sqlite = BotDatabase.Sqlite(sqlitePath);
+            await sqlite.MigrateAsync(NullLogger.Instance);
+            var sqliteUsers = new UserRepository(sqlite, NullLogger<UserRepository>.Instance);
+            var collection = new UserCardCollection { UserId = 900000000000000001, Balance = 3m, Cards = [MakeCard("Pikachu"), MakeCard("Eevee")] };
+            await sqliteUsers.SaveUserCardsAsync(collection);
+            // A gap in the IDs, as deleted cards leave
+            collection.Cards.RemoveAt(0);
+            collection.FavoriteCardId = collection.Cards[0].InstanceId;
+            await sqliteUsers.SaveUserCardsAsync(collection);
+            await sqliteUsers.ArchiveUserCardsAsync(collection.UserId);
+            var state = new BotState();
+            state.Restore(true, 5, ["base1"]);
+            await new BotStateStore(sqlite, state, new SessionStore(), NullLogger<BotStateStore>.Instance).SaveAsync();
+
+            var postgres = server.CreateDatabase();
+            var result = await SqliteToPostgresCopy.CopyAsync(sqlite, postgres, NullLogger.Instance);
+
+            Assert.Equal(new DatabaseCopyResult(1, 1, 0, 3, 1, 0), result);
+            var postgresUsers = new UserRepository(postgres, NullLogger<UserRepository>.Instance);
+            var copied = await postgresUsers.LoadUserCardsAsync(collection.UserId);
+            Assert.Equal(2, Assert.Single(copied.Cards).InstanceId);
+            Assert.Equal("Eevee", copied.FavoriteCard?.Name);
+            Assert.Equal(3m, copied.Balance);
+
+            // New cards continue after the copied IDs
+            copied.Cards.Add(MakeCard("Mew"));
+            await postgresUsers.SaveUserCardsAsync(copied);
+            Assert.Equal(3, copied.Cards[1].InstanceId);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => SqliteToPostgresCopy.CopyAsync(sqlite, postgres, NullLogger.Instance));
+        }
+        finally
+        {
+            SqliteConnection.ClearAllPools();
+            Directory.Delete(directory, recursive: true);
+        }
     }
 }
