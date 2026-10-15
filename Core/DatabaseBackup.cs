@@ -1,11 +1,13 @@
 using System.Globalization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace DiscordBot.Core;
 
 /// <summary>
-///     Writes a consistent copy of the database to <c>backups/</c> next to it once a day and keeps
-///     the newest few. <c>ops/pokebot-backup.sh</c> ships the newest copy off the host.
+///     Writes a consistent copy of the SQLite database to <c>backups/</c> next to it once a day and
+///     keeps the newest few. <c>ops/pokebot-backup.sh</c> ships the newest copy off the host. A
+///     Postgres database is backed up by whoever runs the server.
 /// </summary>
 public sealed class DatabaseBackup(BotDatabase database, ILogger<DatabaseBackup> logger)
 {
@@ -23,7 +25,8 @@ public sealed class DatabaseBackup(BotDatabase database, ILogger<DatabaseBackup>
     ///     Gets the directory the copies are written to.
     /// </summary>
     public string BackupDirectory { get; } =
-        Path.Combine(Path.GetDirectoryName(Path.GetFullPath(database.FilePath))!, "backups");
+        Path.Combine(Path.GetDirectoryName(Path.GetFullPath(
+            database.SqlitePath ?? throw new InvalidOperationException("Only an SQLite database is backed up by the bot.")))!, "backups");
 
     /// <summary>
     ///     Writes a copy and deletes all but the newest <see cref="KeepCount"/>.
@@ -45,9 +48,9 @@ public sealed class DatabaseBackup(BotDatabase database, ILogger<DatabaseBackup>
 
         // Unlike copying the file, VACUUM INTO includes what is still in the WAL and is consistent
         // while the bot keeps writing
-        await using (var connection = await database.OpenAsync())
+        await using (var db = database.CreateContext())
         {
-            await SqliteCommands.ExecuteAsync(connection, null, "VACUUM INTO $path;", ("$path", path));
+            await db.Database.ExecuteSqlAsync($"VACUUM INTO {path};");
         }
 
         // The timestamp in the name sorts in time order

@@ -1,144 +1,154 @@
-using Microsoft.Data.Sqlite;
+using DiscordBot.Core.Storage;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.Extensions.Logging;
 
 namespace DiscordBot.Core;
 
 /// <summary>
-///     The SQLite database holding user collections, expeditions and bot settings. Opens one
-///     pooled connection per operation and brings the schema up to date on startup.
+///     The database holding user collections, expeditions and bot settings: an SQLite file or a
+///     Postgres database. Hands out one <see cref="BotDbContext"/> per operation and brings the
+///     schema up to date on startup.
 /// </summary>
 public sealed class BotDatabase
 {
     /// <summary>
-    ///     Where the database lives unless <c>DATABASE_PATH</c> says otherwise: <c>/app/data/bot.db</c>
-    ///     in the container, on the data volume.
+    ///     Where the SQLite database lives unless <c>DATABASE_PATH</c> says otherwise:
+    ///     <c>/app/data/bot.db</c> in the container, on the data volume.
     /// </summary>
     public static readonly string DefaultPath = Path.Combine(AppContext.BaseDirectory, "data", "bot.db");
 
     /// <summary>
-    ///     Schema scripts in order; script N brings <c>PRAGMA user_version</c> from N to N + 1.
-    ///     Never edit a script that has shipped, append a new one instead.
+    ///     The <c>PRAGMA user_version</c> the hand-written schema scripts left behind. The initial EF
+    ///     migration builds exactly that schema.
     /// </summary>
-    private static readonly string[] Migrations =
-    [
-        """
-        CREATE TABLE users (
-            user_id          INTEGER PRIMARY KEY,
-            balance_cents    INTEGER NOT NULL DEFAULT 0,
-            packs_pulled     INTEGER NOT NULL DEFAULT 0,
-            cards_traded     INTEGER NOT NULL DEFAULT 0,
-            favorite_card_id INTEGER REFERENCES cards (id) ON DELETE SET NULL,
-            left_at_utc      TEXT
-        );
+    private const int LegacySchemaVersion = 2;
 
-        CREATE TABLE cards (
-            id                     INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id                INTEGER NOT NULL REFERENCES users (user_id) ON DELETE CASCADE,
-            set_id                 TEXT,
-            local_id               TEXT,
-            name                   TEXT NOT NULL,
-            rarity                 TEXT,
-            image                  TEXT,
-            cardmarket_avg_cents   INTEGER,
-            tcgplayer_market_cents INTEGER,
-            tcgplayer_low_cents    INTEGER,
-            is_locked              INTEGER NOT NULL DEFAULT 0
-        );
+    private readonly Func<BotDbContext> _createContext;
 
-        CREATE INDEX ix_cards_user_id ON cards (user_id);
-
-        CREATE TABLE expeditions (
-            user_id        INTEGER PRIMARY KEY REFERENCES users (user_id) ON DELETE CASCADE,
-            location_id    TEXT NOT NULL,
-            start_time_utc TEXT NOT NULL,
-            end_time_utc   TEXT NOT NULL
-        );
-
-        CREATE TABLE settings (
-            key   TEXT PRIMARY KEY,
-            value TEXT NOT NULL
-        );
-
-        CREATE TABLE locked_sets (
-            set_id TEXT PRIMARY KEY
-        );
-        """,
-        """
-        CREATE TABLE expedition_locations (
-            id                 TEXT PRIMARY KEY COLLATE NOCASE,
-            name               TEXT NOT NULL,
-            duration_minutes   INTEGER NOT NULL,
-            min_reward         REAL NOT NULL,
-            max_reward         REAL NOT NULL,
-            card_reward_chance REAL NOT NULL,
-            card_reward_count  INTEGER NOT NULL,
-            card_reward_set_id TEXT
-        );
-        """,
-    ];
-
-    private readonly string _connectionString;
-
-    public BotDatabase(string path)
+    private BotDatabase(DatabaseProvider provider, string? sqlitePath, string description, Func<BotDbContext> createContext)
     {
-        FilePath = path;
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+        Provider = provider;
+        SqlitePath = sqlitePath;
+        Description = description;
+        _createContext = createContext;
+    }
 
-        _connectionString = new SqliteConnectionStringBuilder
+    public DatabaseProvider Provider { get; }
+
+    /// <summary>
+    ///     Gets the path of the database file; <see langword="null"/> for Postgres.
+    /// </summary>
+    public string? SqlitePath { get; }
+
+    /// <summary>
+    ///     Gets where the database is, for the log: the file path, or host and database name
+    ///     without credentials.
+    /// </summary>
+    public string Description { get; }
+
+    /// <summary>
+    ///     Picks the database from DB_PROVIDER (<c>sqlite</c>, the default, or <c>postgres</c>).
+    ///     SQLite uses the file at DATABASE_PATH or <see cref="DefaultPath"/>; Postgres needs the
+    ///     connection string in DB_CONNECTION.
+    /// </summary>
+    /// <param name="getVariable">
+    ///     Reads an environment variable; <see langword="null"/> if it is not set.
+    /// </param>
+    /// <exception cref="InvalidOperationException">
+    ///     DB_PROVIDER is unknown, or DB_CONNECTION is missing for Postgres or set for SQLite.
+    /// </exception>
+    public static BotDatabase FromEnvironment(Func<string, string?> getVariable)
+    {
+        string provider = getVariable("DB_PROVIDER") is { Length: > 0 } value ? value.Trim().ToLowerInvariant() : "sqlite";
+        string? connection = getVariable("DB_CONNECTION") is { Length: > 0 } connectionValue ? connectionValue : null;
+
+        switch (provider)
         {
-            DataSource = path,
-            ForeignKeys = true,
-        }.ToString();
+            case "sqlite":
+                // Most likely DB_PROVIDER was forgotten; silently using a local file would split the data
+                if (connection != null)
+                    throw new InvalidOperationException("DB_CONNECTION is set but DB_PROVIDER is sqlite; set DB_PROVIDER=postgres, or DATABASE_PATH for an SQLite file.");
+                return Sqlite(getVariable("DATABASE_PATH") is { Length: > 0 } path ? path : DefaultPath);
+            case "postgres":
+                return Postgres(connection ?? throw new InvalidOperationException("DB_PROVIDER is postgres but DB_CONNECTION is not set."));
+            default:
+                throw new InvalidOperationException($"DB_PROVIDER '{provider}' is unknown; use sqlite or postgres.");
+        }
     }
 
     /// <summary>
-    ///     Gets the path of the database file.
+    ///     An SQLite database in the file at <paramref name="path"/>; its directory is created.
     /// </summary>
-    public string FilePath { get; }
-
-    /// <summary>
-    ///     Opens a connection with foreign keys enforced. The caller disposes it.
-    /// </summary>
-    public async Task<SqliteConnection> OpenAsync()
+    public static BotDatabase Sqlite(string path)
     {
-        var connection = new SqliteConnection(_connectionString);
-        await connection.OpenAsync();
-        return connection;
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+        return new BotDatabase(DatabaseProvider.Sqlite, path, path, () => SqliteBotDbContext.Create(path));
     }
 
     /// <summary>
-    ///     Applies the schema scripts the database has not seen yet, each in its own transaction.
+    ///     A Postgres database; the tables live in the <see cref="PostgresBotDbContext.Schema"/> schema.
+    /// </summary>
+    public static BotDatabase Postgres(string connectionString)
+    {
+        var builder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+        return new BotDatabase(DatabaseProvider.Postgres, null, $"postgres://{builder.Host}:{builder.Port}/{builder.Database}",
+            () => PostgresBotDbContext.Create(connectionString));
+    }
+
+    /// <summary>
+    ///     Creates a context. The caller disposes it.
+    /// </summary>
+    public BotDbContext CreateContext() => _createContext();
+
+    /// <summary>
+    ///     Applies the migrations the database has not seen yet. An SQLite file from before EF Core
+    ///     is marked as being at the initial migration first, since it already has that schema.
     /// </summary>
     /// <returns>
-    ///     The schema version before the migration; 0 for a new database.
+    ///     The migrations applied, oldest first; empty if the schema was up to date.
     /// </returns>
-    public async Task<int> MigrateAsync()
+    /// <exception cref="InvalidOperationException">
+    ///     The SQLite file is at a hand-written schema version other than the last one.
+    /// </exception>
+    public async Task<IReadOnlyList<string>> MigrateAsync(ILogger logger)
     {
-        await using var connection = await OpenAsync();
+        await using var context = CreateContext();
 
-        // WAL lets the background purge and the interaction handlers read and write side by side
-        await ExecuteAsync(connection, null, "PRAGMA journal_mode = WAL;");
-
-        await using var versionCommand = connection.CreateCommand();
-        versionCommand.CommandText = "PRAGMA user_version;";
-        int startVersion = Convert.ToInt32(await versionCommand.ExecuteScalarAsync());
-
-        for (int version = startVersion; version < Migrations.Length; version++)
+        if (Provider == DatabaseProvider.Sqlite)
         {
-            await using var transaction = connection.BeginTransaction();
-            await ExecuteAsync(connection, transaction, Migrations[version]);
-            // PRAGMA does not take parameters; the value is a loop counter, not input
-            await ExecuteAsync(connection, transaction, $"PRAGMA user_version = {version + 1};");
-            await transaction.CommitAsync();
+            // WAL lets the background purge and the interaction handlers read and write side by side
+            await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode = WAL;");
+            await BaselineLegacySqliteAsync(context, logger);
         }
 
-        return startVersion;
+        var pending = (await context.Database.GetPendingMigrationsAsync()).ToList();
+        await context.Database.MigrateAsync();
+        return pending;
     }
 
-    private static async Task ExecuteAsync(SqliteConnection connection, SqliteTransaction? transaction, string sql)
+    private static async Task BaselineLegacySqliteAsync(BotDbContext context, ILogger logger)
     {
-        await using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = sql;
-        await command.ExecuteNonQueryAsync();
+        int userVersion = await context.Database.SqlQueryRaw<int>("SELECT user_version AS Value FROM pragma_user_version").SingleAsync();
+        if (userVersion == 0)
+            return;
+
+        var history = context.GetService<IHistoryRepository>();
+        if (await history.ExistsAsync())
+            return;
+
+        if (userVersion != LegacySchemaVersion)
+            throw new InvalidOperationException(
+                $"The database is at hand-written schema version {userVersion}; only version {LegacySchemaVersion} can be taken over by EF Core. " +
+                "Start a build from before EF Core on it once to bring it to that version.");
+
+        string initialMigration = context.Database.GetMigrations().First();
+        await using var transaction = await context.Database.BeginTransactionAsync();
+        await context.Database.ExecuteSqlRawAsync(history.GetCreateIfNotExistsScript());
+        await context.Database.ExecuteSqlRawAsync(history.GetInsertScript(new HistoryRow(initialMigration, ProductInfo.GetVersion())));
+        await transaction.CommitAsync();
+
+        logger.LogInformation("Took over the hand-written schema version {UserVersion} as EF migration {Migration}", userVersion, initialMigration);
     }
 }

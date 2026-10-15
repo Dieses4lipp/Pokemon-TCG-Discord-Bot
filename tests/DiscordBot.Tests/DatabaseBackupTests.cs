@@ -29,7 +29,7 @@ public sealed class DatabaseBackupTests : IAsyncLifetime
 
         string path = await _backup.CreateAsync(DateTime.UtcNow);
 
-        var copy = new UserRepository(new BotDatabase(path), NullLogger<UserRepository>.Instance);
+        var copy = new UserRepository(BotDatabase.Sqlite(path), NullLogger<UserRepository>.Instance);
         var restored = await copy.LoadUserCardsAsync(1);
         Assert.Equal(7.5m, restored.Balance);
         Assert.Equal("Pikachu", Assert.Single(restored.Cards).Name);
