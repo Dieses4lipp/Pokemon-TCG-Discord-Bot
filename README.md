@@ -6,6 +6,27 @@ On Discord -> diesesphilipp
 
 A feature-rich Discord bot that brings the Pokémon Trading Card Game experience to your server. Pull packs of random Pokémon cards, manage your personal collection, trade with friends, and more - with card and set data from [TCGdex](https://tcgdex.dev/).
 
+<p align="center">
+  <img src="docs/pull.webp" width="300" alt="Discord /pull command: the bot shows a booster pack with an Open Pack button">
+  <img src="docs/profile.webp" width="300" alt="Discord /profile embed of a trainer with collection stats, coin balance and favorite card">
+  <img src="docs/expedition.webp" width="300" alt="Discord /expedition flow: cards sent out with the time remaining, then the claimed reward">
+</p>
+
+## Why
+
+The bot brings pack opening, collecting and trading to a Discord server without any real money involved, using real card data and prices from TCGdex.
+
+**What was hard**
+
+- Discord.Net can stay in `Connecting` forever after a dropped gateway without raising an event. A watchdog polls the connection state and exits after 3 minutes, so Docker restarts a fresh container.
+- A trade is confirmed later than it is proposed. On `/confirmtrade` both sides are checked again (cards still owned, not locked, enough coins) and nothing changes if any check fails.
+- Moving existing users from JSON files to a database without losing collections: a one-time importer reads the old files and leaves them untouched as a backup.
+
+**Trade-offs**
+
+- The card list of a set is cached in memory for 12 hours. One API call per set instead of one per card on every pull, at the cost of card prices being up to 12 hours old.
+- Card detail requests to TCGdex run in parallel but throttled, so a large pull stays fast without flooding the API.
+
 ---
 
 ## Table of Contents
