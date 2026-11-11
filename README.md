@@ -4,7 +4,7 @@
 On Discord -> diesesphilipp
 
 
-A feature-rich Discord bot that brings the Pokémon Trading Card Game experience to your server. Pull packs of random Pokémon cards, manage your personal collection, trade with friends, and more - all powered by the official [Pokémon TCG API](https://pokemontcg.io/).
+A feature-rich Discord bot that brings the Pokémon Trading Card Game experience to your server. Pull packs of random Pokémon cards, manage your personal collection, trade with friends, and more - with card and set data from [TCGdex](https://tcgdex.dev/).
 
 ---
 
@@ -31,19 +31,19 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
   View your saved cards with `/inventory` and manage your collection directly in Discord.
 
 - **Set Browsing:**  
-  Use `/sets` to see a list of available Pokémon card sets.
+  Use `/sets` to see a list of Pokémon card sets.
 
 - **Trading System:**  
-  Initiate trades with other users using `/trade [user] [give-card] [receive-card]` along with commands to confirm (`/confirmtrade`) or cancel (`/canceltrade`) a trade.
+  Initiate trades with other users using `/trade [user] [give-card] [receive-card] [receive-money]` along with commands to confirm (`/confirmtrade`) or cancel (`/canceltrade`) a trade.
 
 - **Expeditions:**  
   Send cards off to a location with `/expedition start [location] [cards]`, check progress with `/expedition status`, and collect coin and card rewards with `/expedition claim` once the timer finishes. Cards on an expedition are locked and can't be sold or traded until claimed.
 
 - **User Profiles:**  
-  Display user profiles with `/profile [user]` to see their collection or trading history.
+  Display user profiles with `/profile [user]` to see their stats: packs pulled, cards saved, unique cards, cards traded, balance and favorite card.
 
 - **Administrative Commands:**  
-  Admins can lock or unlock specific card sets (`/lockset [set-id]` and `/unlockset [set-id]`), restart the bot (`/restart`), or control its active status using `/turnon`/`/turnoff`. Additionally, view bot statistics with `/stats`.
+  Admins can lock or unlock specific card sets (`/lockset [set-id]` and `/unlockset [set-id]`), restart the bot (`/restart`), or control its active status using `/turnon`/`/turnoff`. Any user can view bot statistics with `/stats`.
 
 - **Robust Command Handling:**  
   Commands are processed using a dedicated command handler with logging and detailed error reporting.
@@ -54,9 +54,8 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
 
 ### Prerequisites
 
-- [.NET 6.0 SDK or later](https://dotnet.microsoft.com/download)
+- [.NET 8.0 SDK](https://dotnet.microsoft.com/download)
 - A Discord account and a bot token (obtain one via the [Discord Developer Portal](https://discord.com/developers/applications))
-- An API key for the [Pokémon TCG API](https://pokemontcg.io/) (optional but recommended for higher rate limits)
 
 ### Setup Steps
 
@@ -64,7 +63,7 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
 
    ```bash
    git clone https://github.com/Dieses4lipp/Pokemon-TCG-Discord-Bot
-   cd yourrepo
+   cd Pokemon-TCG-Discord-Bot
    ```
 
 2. **Configure Environment Variables:**
@@ -108,7 +107,7 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
   The bot listens strictly to Discord Application (Slash) Commands executing directly through integrations instead of the old-school text message prefix parsing mechanism.
 
 - **API Endpoints:**  
-  The bot uses endpoints from the Pokémon TCG API to fetch card and set data. Update these in the `CardApiClient` class if necessary.
+  The bot fetches card and set data from the TCGdex API (`https://api.tcgdex.net/v2/`). Update the URLs in the `CardApiClient` class if necessary.
 
 - **Storage:**  
   Collections, balances, expeditions, locked sets, the on/off switch and open trades and packs live in one database, through EF Core: an SQLite file (`DATABASE_PATH`, default `data/bot.db`) or, with `DB_PROVIDER=postgres`, the Postgres database in `DB_CONNECTION` (tables in the schema `pokebot`, migration history included, so the database can be shared). An unknown `DB_PROVIDER`, or a `DB_CONNECTION` that is missing for Postgres or set without `DB_PROVIDER=postgres`, stops the bot at startup. The schema is created and upgraded on startup by the EF migrations in `Migrations/Sqlite` and `Migrations/Postgres`; an SQLite file from before EF Core is taken over as is (it already has the initial migration's schema). Every card copy has its own ID, balances are stored in cents, and a trade writes both collections in one transaction.  
@@ -137,7 +136,7 @@ A feature-rich Discord bot that brings the Pokémon Trading Card Game experience
 
 ## Usage
 
-Once the bot is running and added to your Discord server, interact with it using the commands listed below. It automatically logs in, connects, registers slash commands globally or server specific, and starts listening for command interactions properly matching typical slash integration logic.
+Once the bot is running and added to your Discord server, interact with it using the commands listed below. It automatically logs in, connects, registers its slash commands in every server it is in (per server, not globally), and starts listening for command interactions properly matching typical slash integration logic.
 
 ---
 
@@ -152,18 +151,21 @@ Once the bot is running and added to your Discord server, interact with it using
   Displays your saved Pokémon cards.
 
 - **`/sets`**  
-  Shows a list of available Pokémon card sets.
+  Shows up to 24 Pokémon card sets from TCGdex, sorted by name.
 
 - **`/profile [user]`**  
-  Displays the profile and collection of the specified user.
+  Displays the stats of the specified user: packs pulled, cards saved, unique cards, cards traded, balance and favorite card.
 
 - **`/help`**  
   Lists all available commands.
 
+- **`/stats`**  
+  Displays various statistics about the bot’s usage and performance.
+
 ### Trading Commands
 
-- **`/trade [user] [give-card] [receive-card]`**  
-  Initiates a trade session with another user by specifying which card you want to give and which card you want to receive.
+- **`/trade [user] [give-card] [receive-card] [receive-money]`**  
+  Proposes a trade: you give one card and receive a card, coins, or both. `receive-card` and `receive-money` are optional.
 
 - **`/confirmtrade`**  
   Confirms an ongoing trade.
@@ -214,14 +216,11 @@ Once the bot is running and added to your Discord server, interact with it using
 - **`/expedition-admin inspect [user]` / `finish [user]`**  
   Shows a user's running expedition, or ends it now so the user can claim it right away. *(Admin only)*
 
-- **`/stats`**  
-  Displays various statistics about the bot’s usage and performance. *(Admin only)*
-
 For a full list of commands, type `/help` in Discord.
 
 ### Help Command
 
-The `HelpCommand` module sends a rich embed listing all available commands and their usage. This module is automatically registered along with other commands during the bot`s startup.
+The `HelpModule` sends a rich embed listing all available commands and their usage. This module is automatically registered along with other commands during the bot`s startup.
 
 ---
 
@@ -261,7 +260,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Acknowledgements
 
-- [Pokémon TCG API](https://pokemontcg.io/) for providing the card data.
+- [TCGdex](https://tcgdex.dev/) for providing the card data.
 - [Discord.NET](https://github.com/discord-net/Discord.Net) for the Discord API library.
 - The open-source community for support and contributions.
 
